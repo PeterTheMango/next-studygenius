@@ -1,0 +1,248 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string
+          email: string | null
+          full_name: string | null
+          avatar_url: string | null
+          subscription_tier: 'free' | 'plus' | 'pro' | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id: string
+          email?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+          subscription_tier?: 'free' | 'plus' | 'pro' | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          email?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+          subscription_tier?: 'free' | 'plus' | 'pro' | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      documents: {
+        Row: {
+          id: string
+          user_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          page_count: number | null
+          status: 'pending' | 'processing' | 'ready' | 'failed' | null
+          extracted_text: string | null
+          topics: Json | null
+          error_message: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          file_name: string
+          file_path: string
+          file_size: number
+          page_count?: number | null
+          status?: 'pending' | 'processing' | 'ready' | 'failed' | null
+          extracted_text?: string | null
+          topics?: Json | null
+          error_message?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          page_count?: number | null
+          status?: 'pending' | 'processing' | 'ready' | 'failed' | null
+          extracted_text?: string | null
+          topics?: Json | null
+          error_message?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      quizzes: {
+        Row: {
+          id: string
+          document_id: string
+          user_id: string
+          title: string
+          description: string | null
+          mode: 'learn' | 'revision' | 'test'
+          settings: Json | null
+          question_count: number | null
+          status: 'draft' | 'generating' | 'ready' | 'archived' | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          document_id: string
+          user_id: string
+          title: string
+          description?: string | null
+          mode: 'learn' | 'revision' | 'test'
+          settings?: Json | null
+          question_count?: number | null
+          status?: 'draft' | 'generating' | 'ready' | 'archived' | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          document_id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          mode?: 'learn' | 'revision' | 'test'
+          settings?: Json | null
+          question_count?: number | null
+          status?: 'draft' | 'generating' | 'ready' | 'archived' | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+      }
+      questions: {
+        Row: {
+          id: string
+          quiz_id: string
+          type: 'multiple_choice' | 'true_false' | 'fill_blank' | 'short_answer' | 'matching' | 'ordering'
+          topic: string | null
+          difficulty: 'easy' | 'medium' | 'hard' | null
+          question_text: string
+          options: Json | null
+          correct_answer: string
+          explanation: string | null
+          hint: string | null
+          source_reference: string | null
+          time_estimate: number | null
+          order_index: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          quiz_id: string
+          type: 'multiple_choice' | 'true_false' | 'fill_blank' | 'short_answer' | 'matching' | 'ordering'
+          topic?: string | null
+          difficulty?: 'easy' | 'medium' | 'hard' | null
+          question_text: string
+          options?: Json | null
+          correct_answer: string
+          explanation?: string | null
+          hint?: string | null
+          source_reference?: string | null
+          time_estimate?: number | null
+          order_index: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          quiz_id?: string
+          type?: 'multiple_choice' | 'true_false' | 'fill_blank' | 'short_answer' | 'matching' | 'ordering'
+          topic?: string | null
+          difficulty?: 'easy' | 'medium' | 'hard' | null
+          question_text?: string
+          options?: Json | null
+          correct_answer?: string
+          explanation?: string | null
+          hint?: string | null
+          source_reference?: string | null
+          time_estimate?: number | null
+          order_index?: number
+          created_at?: string | null
+        }
+      }
+      quiz_attempts: {
+        Row: {
+          id: string
+          quiz_id: string
+          user_id: string
+          mode: 'learn' | 'revision' | 'test'
+          started_at: string | null
+          completed_at: string | null
+          time_spent: number | null
+          score: number | null
+          total_questions: number
+          correct_answers: number | null
+          status: 'in_progress' | 'completed' | 'abandoned' | null
+        }
+        Insert: {
+          id?: string
+          quiz_id: string
+          user_id: string
+          mode: 'learn' | 'revision' | 'test'
+          started_at?: string | null
+          completed_at?: string | null
+          time_spent?: number | null
+          score?: number | null
+          total_questions: number
+          correct_answers?: number | null
+          status?: 'in_progress' | 'completed' | 'abandoned' | null
+        }
+        Update: {
+          id?: string
+          quiz_id?: string
+          user_id?: string
+          mode?: 'learn' | 'revision' | 'test'
+          started_at?: string | null
+          completed_at?: string | null
+          time_spent?: number | null
+          score?: number | null
+          total_questions?: number
+          correct_answers?: number | null
+          status?: 'in_progress' | 'completed' | 'abandoned' | null
+        }
+      }
+      question_responses: {
+        Row: {
+          id: string
+          attempt_id: string
+          question_id: string
+          user_answer: string | null
+          is_correct: boolean | null
+          time_spent: number | null
+          answered_at: string | null
+        }
+        Insert: {
+          id?: string
+          attempt_id: string
+          question_id: string
+          user_answer?: string | null
+          is_correct?: boolean | null
+          time_spent?: number | null
+          answered_at?: string | null
+        }
+        Update: {
+          id?: string
+          attempt_id?: string
+          question_id?: string
+          user_answer?: string | null
+          is_correct?: boolean | null
+          time_spent?: number | null
+          answered_at?: string | null
+        }
+      }
+    }
+  }
+}
