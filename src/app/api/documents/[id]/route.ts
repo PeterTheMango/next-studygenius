@@ -9,10 +9,8 @@ export async function DELETE(
     const supabase = await createClient()
     const { id } = await params
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    // Get authenticated user (proxy guarantees authentication)
+    const { data: { user } } = await supabase.auth.getUser()
 
     // Get document to find file path
     const { data: document, error: docError } = await supabase

@@ -5,6 +5,68 @@ import { updateSession } from "@/lib/supabase/session";
 const protectedRoutes = ["/dashboard", "/documents", "/quizzes", "/analytics"];
 const publicRoutes = ["/login", "/signup", "/"];
 
+// Public API routes (no auth required)
+const publicApiRoutes = ["/api/auth/callback"];
+
+// Allowed localhost patterns for CORS protection
+const ALLOWED_LOCALHOST_PATTERNS = [
+  "http://localhost",
+  "http://127.0.0.1",
+  "https://localhost",
+  "https://127.0.0.1",
+];
+
+/**
+ * Check if the request origin is from localhost
+ */
+function isLocalhostOrigin(request: NextRequest): boolean {
+  // Check Origin header (most reliable for CORS)
+  const origin = request.headers.get("origin");
+  if (origin) {
+    return ALLOWED_LOCALHOST_PATTERNS.some((pattern) =>
+      origin.startsWith(pattern)
+    );
+  }
+
+  // Check Referer header (fallback)
+  const referer = request.headers.get("referer");
+  if (referer) {
+    return ALLOWED_LOCALHOST_PATTERNS.some((pattern) =>
+      referer.startsWith(pattern)
+    );
+  }
+
+  // Check Host header (last resort)
+  const host = request.headers.get("host");
+  if (host) {
+    return host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  }
+
+  // In development with same-origin requests, headers might not be present
+  // Allow if no origin header in development mode
+  if (process.env.NODE_ENV === "development") {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if route is an API route
+ */
+function isApiRoute(pathname: string): boolean {
+  return pathname.startsWith("/api/");
+}
+
+/**
+ * Check if API route is public (no auth required)
+ */
+function isPublicApiRoute(pathname: string): boolean {
+  return publicApiRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
@@ -13,18 +75,71 @@ export async function proxy(request: NextRequest) {
     (route) => path === route || path.startsWith(`${route}/`)
   );
   const isPublicRoute = publicRoutes.includes(path);
+  const apiRoute = isApiRoute(path);
+
+  // ============================================================================
+  // CORS PROTECTION: Localhost-only validation
+  // ============================================================================
+
+  // Skip CORS check for public non-API routes (login, signup, home)
+  if (isPublicRoute && !apiRoute) {
+    // Still need to update session for public pages
+    const { user, supabaseResponse } = await updateSession(request);
+
+    // Redirect authenticated users away from login/signup
+    if (user && (path === "/login" || path === "/signup")) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+
+    return supabaseResponse;
+  }
+
+  // Validate localhost origin for all other requests
+  if (!isLocalhostOrigin(request)) {
+    console.warn(`[CORS] Blocked non-localhost request to ${path}`);
+
+    if (apiRoute) {
+      // API routes: return 403 JSON
+      return NextResponse.json(
+        { error: "Forbidden: Request must originate from localhost" },
+        { status: 403 }
+      );
+    } else {
+      // Page routes: redirect to home
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
+  // ============================================================================
+  // AUTHENTICATION: Check user session
+  // ============================================================================
 
   // Update Supabase session and get user
   const { user, supabaseResponse } = await updateSession(request);
 
-  // Redirect to /login if user is not authenticated and trying to access protected route
+  // Handle API routes
+  if (apiRoute) {
+    // Allow public API routes
+    if (isPublicApiRoute(path)) {
+      return supabaseResponse;
+    }
+
+    // Require authentication for all other API routes
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    return supabaseResponse;
+  }
+
+  // Handle protected page routes
   if (isProtectedRoute && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectTo", path);
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect to /dashboard if user is authenticated and trying to access auth pages
+  // Redirect authenticated users away from login/signup
   if (isPublicRoute && user && (path === "/login" || path === "/signup")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
@@ -37,15 +152,16 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-     * - Public assets (images, etc.)
+     * - Public assets (images, fonts, etc.)
+     *
+     * NOTE: Removed "api" from exclusion list to protect API routes
      */
     {
       source:
-        "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+        "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf|eot)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

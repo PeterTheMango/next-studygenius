@@ -25,13 +25,10 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
+    // Get authenticated user (proxy guarantees authentication)
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const body = await request.json();
 

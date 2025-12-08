@@ -57,7 +57,7 @@ export async function generateQuestions({
     const response = await genAI.models.generateContent({
       model: GEMINI_MODEL,
       contents: [{ text: prompt }],
-      generationConfig: {
+      config: {
         responseMimeType: "application/json",
         temperature: 0.3, // Lower for consistency
         maxOutputTokens: 8192,
@@ -92,11 +92,12 @@ export async function extractTopics(
   documentContent: string
 ): Promise<string[]> {
   const prompt = `Analyze the following document and extract the main topics/sections covered.
+The document has been pre-filtered to remove cover pages, table of contents, and non-content pages.
 Return ONLY a JSON array of topic strings, nothing else.
 Example: ["Introduction to Cells", "Cell Membrane", "Mitochondria"]
 
 DOCUMENT:
-${documentContent.slice(0, 10000)}
+${documentContent.slice(0, 15000)}
 
 Return the topics array:`;
 
@@ -104,7 +105,7 @@ Return the topics array:`;
     const response = await genAI.models.generateContent({
       model: GEMINI_MODEL,
       contents: [{ text: prompt }],
-      generationConfig: {
+      config: {
         responseMimeType: "application/json",
         temperature: 0.1,
       },

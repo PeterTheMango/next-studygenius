@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -35,6 +35,16 @@ export function LoginForm() {
       password: "",
     },
   })
+
+  // Check for verification status from auth callback
+  useEffect(() => {
+    const verified = searchParams.get("verified")
+    if (verified === "error") {
+      toast.error("Account Verification Failed", {
+        description: "There was an error verifying your account. Please try again.",
+      })
+    }
+  }, [searchParams])
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)

@@ -49,6 +49,9 @@ export interface Database {
           status: 'pending' | 'processing' | 'ready' | 'failed' | null
           extracted_text: string | null
           topics: Json | null
+          page_metadata: Json | null
+          filtered_page_count: number | null
+          original_page_count: number | null
           error_message: string | null
           created_at: string | null
           updated_at: string | null
@@ -63,6 +66,9 @@ export interface Database {
           status?: 'pending' | 'processing' | 'ready' | 'failed' | null
           extracted_text?: string | null
           topics?: Json | null
+          page_metadata?: Json | null
+          filtered_page_count?: number | null
+          original_page_count?: number | null
           error_message?: string | null
           created_at?: string | null
           updated_at?: string | null
@@ -77,6 +83,9 @@ export interface Database {
           status?: 'pending' | 'processing' | 'ready' | 'failed' | null
           extracted_text?: string | null
           topics?: Json | null
+          page_metadata?: Json | null
+          filtered_page_count?: number | null
+          original_page_count?: number | null
           error_message?: string | null
           created_at?: string | null
           updated_at?: string | null
@@ -245,4 +254,26 @@ export interface Database {
       }
     }
   }
+}
+
+// PDF Page Filtering Types
+export type PageClassification =
+  | 'content'      // Main educational content
+  | 'cover'        // Title/cover page
+  | 'toc'          // Table of contents
+  | 'outline'      // Course outline
+  | 'objectives'   // Learning objectives
+  | 'review'       // Summary/review sections
+  | 'quiz'         // Quiz/test questions
+  | 'blank'        // Empty pages
+  | 'unknown';     // Uncertain classification
+
+export interface PageMetadata {
+  pageNumber: number;
+  classification: PageClassification;
+  filtered: boolean;
+  confidence: number;
+  detectionMethod: 'heuristic' | 'ai';
+  characterCount: number;
+  keywords?: string[];
 }

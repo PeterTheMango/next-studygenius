@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { DashboardView } from "@/components/dashboard/dashboard-view";
+import { DashboardWrapper } from "./_components/dashboard-wrapper";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,8 @@ export default async function DashboardPage() {
     .order("started_at", { ascending: false });
 
   return (
-    <DashboardView attempts={attempts || []} />
+    <DashboardWrapper>
+      <DashboardView attempts={attempts || []} />
+    </DashboardWrapper>
   );
 }

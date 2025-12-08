@@ -13,17 +13,22 @@ export async function GET(request: Request) {
     if (!error) {
       const forwardedHost = request.headers.get("x-forwarded-host"); // original origin before load balancer
       const isLocalEnv = process.env.NODE_ENV === "development";
+
+      // Add verified=success param to indicate successful verification
+      const separator = next.includes("?") ? "&" : "?";
+      const successNext = `${next}${separator}verified=success`;
+
       if (isLocalEnv) {
         // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-        return NextResponse.redirect(`${origin}${next}`);
+        return NextResponse.redirect(`${origin}${successNext}`);
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`);
+        return NextResponse.redirect(`https://${forwardedHost}${successNext}`);
       } else {
-        return NextResponse.redirect(`${origin}${next}`);
+        return NextResponse.redirect(`${origin}${successNext}`);
       }
     }
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  // return the user to an error page with verified=error param
+  return NextResponse.redirect(`${origin}/login?verified=error`);
 }

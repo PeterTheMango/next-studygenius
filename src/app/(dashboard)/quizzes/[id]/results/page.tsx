@@ -54,7 +54,8 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
         correct_answer,
         explanation,
         options,
-        order_index
+        order_index,
+        type
       )
     `)
     .eq('id', id)
@@ -104,7 +105,7 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
 
   return (
     <div className="py-8">
-      <ResultsSummary 
+      <ResultsSummary
         quiz={{
           id: id,
           title: quiz.title,
@@ -113,7 +114,8 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
             questionText: q.question_text,
             correctAnswer: q.correct_answer,
             explanation: q.explanation,
-            options: q.options || undefined
+            options: q.options || undefined,
+            type: q.type
           }))
         }}
         attempt={{

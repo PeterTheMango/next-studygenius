@@ -59,6 +59,7 @@ export function QuizPlayer({
     isCorrect: boolean;
     correctAnswer: string;
     explanation: string;
+    score?: number;
   } | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   
@@ -207,6 +208,18 @@ export function QuizPlayer({
 
   const handleNext = () => {
     if (isLastQuestion) {
+      // Store scores in session storage for results page
+      if (typeof window !== 'undefined') {
+        const scoresData = Array.from(responses.values()).map(r => ({
+          questionId: r.questionId,
+          score: r.score,
+          answer: r.answer
+        }));
+        sessionStorage.setItem(
+          `quiz-scores-${attemptId}`,
+          JSON.stringify(scoresData)
+        );
+      }
       // Convert map to array and submit
       const allResponses = Array.from(responses.values());
       performFinalSubmission(allResponses);
@@ -289,6 +302,18 @@ export function QuizPlayer({
         
         if (mode === 'test') {
             if (isLastQuestion) {
+                // Store scores in session storage for results page
+                if (typeof window !== 'undefined') {
+                  const scoresData = Array.from(newResponsesMap.values()).map(r => ({
+                    questionId: r.questionId,
+                    score: r.score,
+                    answer: r.answer
+                  }));
+                  sessionStorage.setItem(
+                    `quiz-scores-${attemptId}`,
+                    JSON.stringify(scoresData)
+                  );
+                }
                 await performFinalSubmission(Array.from(newResponsesMap.values()));
                 // Do not set submitting to false, we are redirecting
                 return;
@@ -302,6 +327,7 @@ export function QuizPlayer({
                 isCorrect: isCorrect,
                 correctAnswer: currentQuestion.correctAnswer || "See explanation",
                 explanation: explanation || "No explanation provided.",
+                score: score
             });
             setSubmitted(true);
             if (isCorrect) {
@@ -352,16 +378,25 @@ export function QuizPlayer({
       </div>
 
       {/* Progress */}
-      <div className="h-2 w-full bg-secondary rounded-full overflow-hidden flex">
-        <div 
-            className="bg-green-500 h-full transition-all duration-500 ease-in-out" 
-            style={{ width: `${(Array.from(responses.values()).filter(r => r.isCorrect).length / questions.length) * 100}%` }} 
-        />
-        <div 
-            className="bg-red-500 h-full transition-all duration-500 ease-in-out" 
-            style={{ width: `${(Array.from(responses.values()).filter(r => !r.isCorrect).length / questions.length) * 100}%` }} 
-        />
-      </div>
+      {mode === "test" ? (
+        <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+          <div
+            className="bg-blue-500 h-full transition-all duration-500 ease-in-out"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      ) : (
+        <div className="h-2 w-full bg-secondary rounded-full overflow-hidden flex">
+          <div
+            className="bg-green-500 h-full transition-all duration-500 ease-in-out"
+            style={{ width: `${(Array.from(responses.values()).filter(r => r.isCorrect).length / questions.length) * 100}%` }}
+          />
+          <div
+            className="bg-red-500 h-full transition-all duration-500 ease-in-out"
+            style={{ width: `${(Array.from(responses.values()).filter(r => !r.isCorrect).length / questions.length) * 100}%` }}
+          />
+        </div>
+      )}
 
       {/* Question */}
       <QuestionCard
@@ -392,6 +427,12 @@ export function QuizPlayer({
               <p className="font-medium">
                 {feedback.isCorrect ? "Correct!" : "Incorrect"}
               </p>
+              {feedback.score !== undefined &&
+               (currentQuestion.type === 'short_answer' || currentQuestion.type === 'fill_blank') && (
+                <p className="text-sm mt-1 text-muted-foreground">
+                  (AI Confidence Score: {feedback.score}/100)
+                </p>
+              )}
               {!feedback.isCorrect && (
                 <p className="text-sm mt-1">
                   The correct answer is:{" "}

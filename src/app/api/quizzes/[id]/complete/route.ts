@@ -9,13 +9,10 @@ export async function POST(
     const supabase = await createClient();
     const { id: quizId } = await params;
 
+    // Get authenticated user (proxy guarantees authentication)
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { attemptId, responses } = await request.json();
 

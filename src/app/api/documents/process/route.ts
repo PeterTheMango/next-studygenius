@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extractTopics } from "@/lib/gemini/question-generator";
+import { filterPDFPages } from "@/lib/pdf/filter-pipeline";
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
 
+    // Get authenticated user (proxy guarantees authentication)
     const {
       data: { user },
-      error: authError,
     } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { documentId } = await request.json();
 
@@ -60,54 +58,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract text from PDF using Gemini
+    // Extract and filter PDF pages
     const arrayBuffer = await fileData.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
 
-    const { genAI, GEMINI_MODEL } = await import("@/lib/gemini/client");
+    let filteringResult;
+    try {
+      filteringResult = await filterPDFPages(base64);
+    } catch (extractionError) {
+      const errorMessage =
+        extractionError instanceof Error
+          ? extractionError.message
+          : "Failed to extract and filter PDF content";
 
-    const extractionResponse = await genAI.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: [
-        {
-          inlineData: {
-            mimeType: "application/pdf",
-            data: base64,
-          },
-        },
-        {
-          text: "Extract all text content from this PDF document. Return only the extracted text, preserving the structure and formatting as much as possible.",
-        },
-      ],
-    });
-
-    const extractedText = extractionResponse.text;
-
-    if (!extractedText || extractedText.length < 100) {
       await supabase
         .from("documents")
         .update({
           status: "failed",
-          error_message: "Could not extract text from PDF",
+          error_message: errorMessage,
         })
         .eq("id", documentId);
+
       return NextResponse.json(
-        { error: "Failed to extract text" },
+        { error: "Failed to process PDF" },
         { status: 500 }
       );
     }
 
-    // Extract topics
-    const topics = await extractTopics(extractedText);
+    const { filteredText, pageMetadata, stats } = filteringResult;
 
-    // Update document with extracted content
+    // Validate: all pages filtered scenario
+    if (stats.keptPages === 0) {
+      await supabase
+        .from("documents")
+        .update({
+          status: "failed",
+          error_message:
+            "All pages were filtered out. Document may only contain non-content pages.",
+        })
+        .eq("id", documentId);
+
+      return NextResponse.json(
+        { error: "No content pages found in document" },
+        { status: 400 }
+      );
+    }
+
+    // Validate: minimum content length
+    if (!filteredText || filteredText.length < 100) {
+      await supabase
+        .from("documents")
+        .update({
+          status: "failed",
+          error_message: "Insufficient content extracted after filtering",
+        })
+        .eq("id", documentId);
+
+      return NextResponse.json(
+        { error: "Failed to extract sufficient content" },
+        { status: 500 }
+      );
+    }
+
+    // Extract topics from filtered content
+    const topics = await extractTopics(filteredText);
+
+    // Update document with filtered content and metadata
     const { error: updateError } = await supabase
       .from("documents")
       .update({
         status: "ready",
-        extracted_text: extractedText,
+        extracted_text: filteredText,
         topics: topics,
-        page_count: Math.ceil(extractedText.length / 3000), // Rough estimate
+        page_count: stats.keptPages,
+        original_page_count: stats.totalPages,
+        filtered_page_count: stats.keptPages,
+        page_metadata: pageMetadata,
       })
       .eq("id", documentId);
 
@@ -121,7 +147,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       topics,
-      textLength: extractedText.length,
+      textLength: filteredText.length,
+      filteringStats: {
+        totalPages: stats.totalPages,
+        keptPages: stats.keptPages,
+        filteredPages: stats.filteredPages,
+        byType: stats.byClassification,
+      },
     });
   } catch (error) {
     console.error("Process handler error:", error);

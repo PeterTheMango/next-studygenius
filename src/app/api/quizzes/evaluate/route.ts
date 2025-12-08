@@ -3,7 +3,12 @@ import { genAI, GEMINI_MODEL } from "@/lib/gemini/client";
 
 export async function POST(req: NextRequest) {
   try {
-    const { questionText, modelAnswer, userAnswer, threshold = 70 } = await req.json();
+    const {
+      questionText,
+      modelAnswer,
+      userAnswer,
+      threshold = 65,
+    } = await req.json();
 
     if (!questionText || !userAnswer) {
       return NextResponse.json(
@@ -24,7 +29,7 @@ export async function POST(req: NextRequest) {
       - If the score is greater than or equal to the threshold, the answer is PASS; otherwise FAIL.
 
       REFERENCE ANSWER:
-      "${modelAnswer || 'N/A'}"
+      "${modelAnswer || "N/A"}"
 
       STUDENT ANSWER:
       "${userAnswer}"
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
     const response = await genAI.models.generateContent({
       model: GEMINI_MODEL,
       contents: [{ text: prompt }],
-      generationConfig: {
+      config: {
         responseMimeType: "application/json",
         temperature: 0.1,
       },
@@ -57,11 +62,10 @@ export async function POST(req: NextRequest) {
     const result = JSON.parse(responseText);
 
     return NextResponse.json({
-        score: result.score,
-        isCorrect: result.result === "PASS",
-        explanation: result.explanation
+      score: result.score,
+      isCorrect: result.result === "PASS",
+      explanation: result.explanation,
     });
-
   } catch (error) {
     console.error("Answer evaluation error:", error);
     return NextResponse.json(

@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, X, Clock, Target, RotateCcw, LayoutDashboard, ChevronDown, ChevronUp } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
@@ -15,6 +15,7 @@ interface QuizResultProps {
       correctAnswer: string;
       explanation: string;
       options?: string[];
+      type?: string;
     }[];
   };
   attempt: {
@@ -22,13 +23,37 @@ interface QuizResultProps {
     correctAnswers: number;
     totalQuestions: number;
     timeSpent: number;
-    answers: Record<string, { userAnswer: string; isCorrect: boolean }>;
+    answers: Record<string, { userAnswer: string; isCorrect: boolean; score?: number }>;
   };
 }
 
 export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+
+  // Retrieve and merge confidence scores from sessionStorage
+  useEffect(() => {
+    const attemptId = searchParams.get('attempt');
+    if (attemptId && typeof window !== 'undefined') {
+      const scoresJson = sessionStorage.getItem(`quiz-scores-${attemptId}`);
+      if (scoresJson) {
+        try {
+          const scores = JSON.parse(scoresJson);
+          // Merge scores into attempt.answers
+          scores.forEach((item: any) => {
+            if (attempt.answers[item.questionId]) {
+              attempt.answers[item.questionId].score = item.score;
+            }
+          });
+          // Clean up sessionStorage
+          sessionStorage.removeItem(`quiz-scores-${attemptId}`);
+        } catch (error) {
+          console.error('Failed to parse session scores:', error);
+        }
+      }
+    }
+  }, [searchParams, attempt.answers]);
 
   const toggleExpand = (id: string) => {
     setExpandedQuestion(expandedQuestion === id ? null : id);
@@ -169,6 +194,15 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                                         <p className="font-medium">{q.correctAnswer}</p>
                                     </div>
                                 </div>
+
+                                {answer?.score !== undefined &&
+                                 (q.type === 'short_answer' || q.type === 'fill_blank') && (
+                                  <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                    <p className="text-sm text-slate-600">
+                                      (AI Confidence Score: <strong>{answer.score}/100</strong>)
+                                    </p>
+                                  </div>
+                                )}
 
                                 <div className="mt-4 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm leading-relaxed">
                                     <span className="font-bold block mb-1">Explanation:</span>
