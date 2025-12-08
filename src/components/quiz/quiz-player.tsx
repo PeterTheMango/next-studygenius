@@ -40,6 +40,7 @@ interface Response {
   questionId: string;
   answer: any;
   isCorrect: boolean;
+  score?: number;
   timeSpent: number;
 }
 
@@ -227,6 +228,7 @@ export function QuizPlayer({
       
       const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
       let isCorrect = false;
+      let score = 0;
       let explanation = currentQuestion.explanation;
 
       try {
@@ -236,6 +238,7 @@ export function QuizPlayer({
             
             if (strictMatch) {
                 isCorrect = true;
+                score = 100;
             } else {
                 // 2. AI Evaluation
                 try {
@@ -245,7 +248,8 @@ export function QuizPlayer({
                         body: JSON.stringify({
                             questionText: currentQuestion.questionText,
                             modelAnswer: currentQuestion.correctAnswer,
-                            userAnswer: selectedAnswer
+                            userAnswer: selectedAnswer,
+                            threshold: 70
                         })
                     });
                     
@@ -253,6 +257,7 @@ export function QuizPlayer({
                     
                     const data = await res.json();
                     isCorrect = data.isCorrect;
+                    score = data.score;
                     if (data.explanation) {
                         explanation = data.explanation;
                     }
@@ -260,17 +265,20 @@ export function QuizPlayer({
                     console.error("AI Eval error:", err);
                     // Fallback to strict check (which already failed if we are here, but just in case)
                     isCorrect = strictMatch;
+                    score = strictMatch ? 100 : 0;
                     toast.warning("Could not verify answer with AI, used strict matching.");
                 }
             }
         } else {
             isCorrect = checkAnswer(currentQuestion, selectedAnswer);
+            score = isCorrect ? 100 : 0;
         }
 
         const newResponse: Response = {
             questionId: currentQuestion.id,
             answer: selectedAnswer,
             isCorrect,
+            score,
             timeSpent
         };
         

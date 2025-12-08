@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, ArrowUp, ArrowDown, ArrowRight, Lightbulb } from "lucide-react";
+import { Check, X, ArrowUp, ArrowDown, ArrowRight, Lightbulb, GripVertical } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface Question {
@@ -47,6 +47,7 @@ export function QuestionCard({
 
   // -- Ordering Logic --
   const [shuffledOrder, setShuffledOrder] = useState<string[]>([]);
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   
   useEffect(() => {
     if (question.type === 'ordering' && question.orderingItems) {
@@ -61,16 +62,31 @@ export function QuestionCard({
     }
   }, [question, selectedAnswer, onSelectAnswer]);
 
-  const handleOrderMove = (index: number, direction: 'up' | 'down') => {
+  const handleDragStart = (index: number) => {
     if (disabled) return;
+    setDraggedItemIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault(); // allow drop
+    if (disabled || draggedItemIndex === null) return;
+    if (draggedItemIndex === index) return;
+
     const newOrder = [...shuffledOrder];
-    if (direction === 'up' && index > 0) {
-      [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]];
-    } else if (direction === 'down' && index < newOrder.length - 1) {
-      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    }
+    const draggedItem = newOrder[draggedItemIndex];
+    
+    // Remove from old position
+    newOrder.splice(draggedItemIndex, 1);
+    // Insert at new position
+    newOrder.splice(index, 0, draggedItem);
+    
     setShuffledOrder(newOrder);
     onSelectAnswer(newOrder);
+    setDraggedItemIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemIndex(null);
   };
 
   // -- Matching Logic --
@@ -221,15 +237,21 @@ export function QuestionCard({
       {question.type === "ordering" && (
           <div className="space-y-2">
               {shuffledOrder.map((item, idx) => (
-                  <div key={item} className="flex items-center gap-3 p-3 border rounded-lg bg-white">
-                      <span className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold">{idx+1}</span>
-                      <span className="flex-1">{item}</span>
-                      {!disabled && (
-                          <div className="flex flex-col">
-                              <button onClick={() => handleOrderMove(idx, 'up')} disabled={idx === 0} className="hover:text-primary"><ArrowUp className="w-4 h-4" /></button>
-                              <button onClick={() => handleOrderMove(idx, 'down')} disabled={idx === shuffledOrder.length - 1} className="hover:text-primary"><ArrowDown className="w-4 h-4" /></button>
-                          </div>
-                      )}
+                  <div 
+                    key={item} 
+                    draggable={!disabled}
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={(e) => handleDragOver(e, idx)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex items-center gap-3 p-3 border rounded-lg bg-white transition-all cursor-move ${
+                        draggedItemIndex === idx ? 'opacity-50 border-dashed border-blue-400 bg-blue-50' : 'hover:border-blue-200'
+                    } ${disabled ? 'cursor-default' : ''}`}
+                  >
+                      <div className="cursor-grab active:cursor-grabbing text-slate-400">
+                          <GripVertical className="w-5 h-5" />
+                      </div>
+                      <span className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold shrink-0">{idx+1}</span>
+                      <span className="flex-1 select-none">{item}</span>
                   </div>
               ))}
                {showFeedback && (

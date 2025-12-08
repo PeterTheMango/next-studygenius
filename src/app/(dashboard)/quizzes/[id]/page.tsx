@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
-import { PlayCircle, Clock, FileText, BarChart, GraduationCap, Calendar, CheckCircle2 } from "lucide-react"
+import { PlayCircle, Clock, FileText, BarChart, GraduationCap, Calendar, CheckCircle2, Eye } from "lucide-react"
 
 export const dynamic = 'force-dynamic'
 
@@ -119,9 +119,13 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
                     </div>
                   </div>
                 </div>
-                <div className="text-green-600">
-                    <CheckCircle2 className="w-5 h-5" />
-                </div>
+                <Link
+                  href={`/quizzes/${id}/results?attempt=${attempt.id}`}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Results
+                </Link>
               </div>
             ))}
           </div>

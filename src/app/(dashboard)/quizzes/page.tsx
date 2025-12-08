@@ -12,11 +12,16 @@ export default async function QuizzesPage() {
     return <div>Please login</div>
   }
 
-  const { data: quizzes } = await supabase
+  const { data: quizzes, error } = await supabase
     .from('quizzes')
-    .select('*, documents(file_name)')
+    .select(`
+      *,
+      documents(file_name),
+      quiz_attempts(id, score, started_at)
+    `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
+    .order('started_at', { foreignTable: 'quiz_attempts', ascending: false })
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

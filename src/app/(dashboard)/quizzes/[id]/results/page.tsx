@@ -24,43 +24,105 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
     redirect(`/quizzes/${id}`)
   }
 
-  // Fetch attempt details
-  const { data: attempt, error } = await supabase
+  // Fetch attempt details with responses
+  const { data: attempt, error: attemptError } = await supabase
     .from('quiz_attempts')
-    .select('*')
+    .select(`
+      *,
+      question_responses (
+        question_id,
+        user_answer,
+        is_correct
+      )
+    `)
     .eq('id', attemptId)
     .eq('user_id', user.id)
     .single()
 
-  if (error || !attempt) {
+  if (attemptError || !attempt) {
     notFound()
   }
 
-  // Calculate time spent (if not already stored properly, we might need logic here, but let's assume it's stored)
-  // The PRD schema has time_spent.
-  
-  // If status is still in_progress, we should mark it complete? 
-  // Ideally `submit` API should have marked it complete or we do it here.
-  // Let's ensure it is marked complete.
-  
+  // Fetch quiz details with questions
+  const { data: quiz, error: quizError } = await supabase
+    .from('quizzes')
+    .select(`
+      title,
+      questions (
+        id,
+        question_text,
+        correct_answer,
+        explanation,
+        options,
+        order_index
+      )
+    `)
+    .eq('id', id)
+    .single()
+
+  if (quizError || !quiz) {
+    notFound()
+  }
+
+  let finalTimeSpent = attempt.time_spent || 0
+
+  // If status is still in_progress, mark it as completed
   if (attempt.status === 'in_progress') {
+    const now = new Date()
+    const startedAt = new Date(attempt.started_at)
+    // Calculate seconds difference
+    finalTimeSpent = Math.floor((now.getTime() - startedAt.getTime()) / 1000)
+
     await supabase
       .from('quiz_attempts')
       .update({ 
         status: 'completed',
-        completed_at: new Date().toISOString()
+        completed_at: now.toISOString(),
+        time_spent: finalTimeSpent
       })
       .eq('id', attemptId)
+  } else if (finalTimeSpent === 0 && attempt.started_at && attempt.completed_at) {
+    // Calculate from existing timestamps if time_spent is missing
+    const startedAt = new Date(attempt.started_at)
+    const completedAt = new Date(attempt.completed_at)
+    finalTimeSpent = Math.floor((completedAt.getTime() - startedAt.getTime()) / 1000)
   }
+
+  // Sort questions
+  const sortedQuestions = (quiz.questions || []).sort((a, b) => a.order_index - b.order_index)
+
+  // Map responses
+  const answersMap = (attempt.question_responses || []).reduce((acc: Record<string, { userAnswer: string; isCorrect: boolean }>, response: any) => {
+    acc[response.question_id] = {
+      userAnswer: response.user_answer,
+      isCorrect: response.is_correct
+    }
+    return acc
+  }, {})
+
+  const scorePercentage = Math.round((attempt.correct_answers || 0) / attempt.total_questions * 100)
 
   return (
     <div className="py-8">
       <ResultsSummary 
-        score={Math.round((attempt.correct_answers || 0) / attempt.total_questions * 100)}
-        totalQuestions={attempt.total_questions}
-        correctAnswers={attempt.correct_answers || 0}
-        timeSpent={attempt.time_spent || 0}
-        quizId={id}
+        quiz={{
+          id: id,
+          title: quiz.title,
+          questions: sortedQuestions.map((q: any) => ({
+            id: q.id,
+            questionText: q.question_text,
+            correctAnswer: q.correct_answer,
+            explanation: q.explanation,
+            options: q.options || undefined
+          }))
+        }}
+        attempt={{
+          score: scorePercentage,
+          correctAnswers: attempt.correct_answers || 0,
+          totalQuestions: attempt.total_questions,
+          timeSpent: finalTimeSpent,
+          answers: answersMap
+        }}
       />
     </div>
   )

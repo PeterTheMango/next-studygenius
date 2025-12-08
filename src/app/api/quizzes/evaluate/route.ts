@@ -3,7 +3,7 @@ import { genAI, GEMINI_MODEL } from "@/lib/gemini/client";
 
 export async function POST(req: NextRequest) {
   try {
-    const { questionText, modelAnswer, userAnswer } = await req.json();
+    const { questionText, modelAnswer, userAnswer, threshold = 70 } = await req.json();
 
     if (!questionText || !userAnswer) {
       return NextResponse.json(
@@ -13,22 +13,31 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = `
-      You are an expert teacher grading a quiz. 
-      Evaluate the student's answer against the model answer for the given question.
+      You are an objective grading assistant. Your task is to evaluate how well the STUDENT ANSWER matches the meaning of the REFERENCE ANSWER. You must judge only semantic relevance, not wording, grammar, length, or examples.
+
+      Your evaluation rules:
+      - Focus ONLY on whether the student’s answer expresses the same core ideas as the reference.
+      - Ignore stylistic differences, ordering, or level of detail.
+      - Do NOT penalize paraphrasing or simplified wording.
+      - Consider the answer correct if it conveys the essential meaning.
+      - Score relevance from 0 to 100.
+      - If the score is greater than or equal to the threshold, the answer is PASS; otherwise FAIL.
+
+      REFERENCE ANSWER:
+      "${modelAnswer || 'N/A'}"
+
+      STUDENT ANSWER:
+      "${userAnswer}"
       
-      Question: "${questionText}"
-      Model Answer: "${modelAnswer || 'N/A'}"
-      Student Answer: "${userAnswer}"
-      
-      Task:
-      1. Determine if the student's answer is semantically correct. It does NOT need to match the model answer word-for-word. Synonyms, paraphrasing, and correct conceptual understanding should be accepted.
-      2. If the answer is partially correct but misses key details required by the question, mark it as incorrect.
-      3. Provide a brief explanation (max 2 sentences) directly addressing the student. 
-      
-      Return ONLY a valid JSON object with no markdown formatting:
+      THRESHOLD:
+      ${threshold}
+
+      Return your evaluation in EXACTLY the following JSON format:
+
       {
-        "isCorrect": boolean,
-        "explanation": "Your explanation here"
+        "score": <number between 0 and 100>,
+        "result": "PASS" or "FAIL",
+        "explanation": "<1-3 sentence justification>"
       }
     `;
 
@@ -48,7 +57,8 @@ export async function POST(req: NextRequest) {
     const result = JSON.parse(responseText);
 
     return NextResponse.json({
-        isCorrect: result.isCorrect,
+        score: result.score,
+        isCorrect: result.result === "PASS",
         explanation: result.explanation
     });
 

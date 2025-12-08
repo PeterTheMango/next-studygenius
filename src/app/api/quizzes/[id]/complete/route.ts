@@ -60,6 +60,14 @@ export async function POST(
 
     // Calculate score
     const correctCount = responses.filter((r: any) => r.isCorrect).length;
+    const completedAt = new Date();
+
+    // Calculate time_spent (completed_at - started_at in seconds)
+    const startedAt = new Date(attempt.started_at);
+    const timeSpentSeconds = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000);
+
+    // Calculate score (correct_answers / total_questions) as decimal
+    const scoreDecimal = correctCount / attempt.total_questions;
 
     // Update attempt status and score
     const { error: updateError } = await supabase
@@ -67,7 +75,9 @@ export async function POST(
       .update({
         status: "completed",
         correct_answers: correctCount,
-        completed_at: new Date().toISOString(),
+        completed_at: completedAt.toISOString(),
+        time_spent: timeSpentSeconds,
+        score: scoreDecimal,
       })
       .eq("id", attemptId);
 
