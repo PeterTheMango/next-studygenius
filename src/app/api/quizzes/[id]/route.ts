@@ -9,8 +9,13 @@ export async function GET(
     const supabase = await createClient()
     const { id } = await params
 
-    // Get authenticated user (proxy guarantees authentication)
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
     const { data: quiz, error } = await supabase
       .from("quizzes")
@@ -37,8 +42,13 @@ export async function DELETE(
     const supabase = await createClient()
     const { id } = await params
 
-    // Get authenticated user (proxy guarantees authentication)
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
     const { error } = await supabase
       .from("quizzes")

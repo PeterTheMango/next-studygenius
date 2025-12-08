@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { PlayCircle, Clock, FileText, BarChart, GraduationCap, Calendar, CheckCircle2, Eye } from "lucide-react"
+import { QuizActionsDropdown } from "@/components/quiz/quiz-actions-dropdown"
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +44,10 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">{quiz.title}</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-3xl font-bold text-slate-800">{quiz.title}</h1>
+            <QuizActionsDropdown quizId={quiz.id} quizTitle={quiz.title} />
+          </div>
           <div className="flex items-center gap-2 text-slate-500">
             <FileText className="w-4 h-4" />
             <span>{quiz.documents && (quiz.documents as any).file_name}</span>

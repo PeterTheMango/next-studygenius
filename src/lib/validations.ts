@@ -31,3 +31,13 @@ export const SignupSchema = z.object({
 export const ForgotPasswordSchema = z.object({
   email: z.string().email(),
 });
+
+export const UpdateQuizTitleSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+});
+
+export const ConfirmActionSchema = z.object({
+  confirmText: z.string().refine((val) => val === "confirm action", {
+    message: "Please type 'confirm action' to proceed",
+  }),
+});
