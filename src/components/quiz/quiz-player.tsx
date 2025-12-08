@@ -230,7 +230,7 @@ export function QuizPlayer({
       let explanation = currentQuestion.explanation;
 
       try {
-        if (currentQuestion.type === 'short_answer') {
+        if (currentQuestion.type === 'short_answer' || currentQuestion.type === 'fill_blank') {
             // 1. Optimistic strict check
             const strictMatch = String(selectedAnswer).trim().toLowerCase() === String(currentQuestion.correctAnswer).trim().toLowerCase();
             
@@ -402,7 +402,9 @@ export function QuizPlayer({
       <div className="flex justify-end">
         {!submitted ? (
           <Button onClick={handleAnswerWrapper} disabled={(!selectedAnswer && currentQuestion.type !== 'matching' && currentQuestion.type !== 'ordering') || isSubmitting}>
-            {isSubmitting ? "Submitting..." : isLastQuestion && mode === 'test' ? "Finish Quiz" : "Submit Answer"}
+            {isSubmitting 
+              ? ((currentQuestion.type === 'fill_blank' || currentQuestion.type === 'short_answer') ? "Evaluating answer..." : "Submitting...") 
+              : isLastQuestion && mode === 'test' ? "Finish Quiz" : "Submit Answer"}
           </Button>
         ) : (
           <Button onClick={handleNext} disabled={isSubmitting}>
