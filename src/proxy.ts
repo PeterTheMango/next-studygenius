@@ -9,37 +9,38 @@ const publicRoutes = ["/login", "/signup", "/"];
 const publicApiRoutes = ["/api/auth/callback"];
 
 // Allowed localhost patterns for CORS protection
-const ALLOWED_LOCALHOST_PATTERNS = [
+const NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+
+const ALLOWED_ORIGINS = [
   "http://localhost",
   "http://127.0.0.1",
   "https://localhost",
   "https://127.0.0.1",
+  ...(NEXT_PUBLIC_APP_URL ? [NEXT_PUBLIC_APP_URL] : []),
 ];
 
 /**
- * Check if the request origin is from localhost
+ * Check if the request origin is from an allowed origin (localhost or NEXT_PUBLIC_APP_URL)
  */
-function isLocalhostOrigin(request: NextRequest): boolean {
+function isAllowedOrigin(request: NextRequest): boolean {
   // Check Origin header (most reliable for CORS)
   const origin = request.headers.get("origin");
   if (origin) {
-    return ALLOWED_LOCALHOST_PATTERNS.some((pattern) =>
-      origin.startsWith(pattern)
-    );
+    return ALLOWED_ORIGINS.some((pattern) => origin.startsWith(pattern));
   }
 
   // Check Referer header (fallback)
   const referer = request.headers.get("referer");
   if (referer) {
-    return ALLOWED_LOCALHOST_PATTERNS.some((pattern) =>
-      referer.startsWith(pattern)
-    );
+    return ALLOWED_ORIGINS.some((pattern) => referer.startsWith(pattern));
   }
 
-  // Check Host header (last resort)
+  // Check Host header (last resort, only for localhost-like values or app URL host)
   const host = request.headers.get("host");
   if (host) {
-    return host.startsWith("localhost") || host.startsWith("127.0.0.1");
+    const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
+    const isAppUrlHost = NEXT_PUBLIC_APP_URL && host.startsWith(new URL(NEXT_PUBLIC_APP_URL).host);
+    return isLocal || isAppUrlHost;
   }
 
   // In development with same-origin requests, headers might not be present
@@ -94,9 +95,9 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Validate localhost origin for all other requests
-  if (!isLocalhostOrigin(request)) {
-    console.warn(`[CORS] Blocked non-localhost request to ${path}`);
+  // Validate allowed origin for all other requests
+  if (!isAllowedOrigin(request)) {
+    console.warn(`[CORS] Blocked non-allowed origin request to ${path}`);
 
     if (apiRoute) {
       // API routes: return 403 JSON
