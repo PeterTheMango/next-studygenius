@@ -36,38 +36,66 @@ export async function POST(
       return NextResponse.json({ error: "Invalid attempt" }, { status: 400 });
     }
 
-    // Prepare batch insert data
-    const responsesToInsert = responses.map((r: any) => ({
-      attempt_id: attemptId,
-      question_id: r.questionId,
-      user_answer: typeof r.answer === 'object' ? JSON.stringify(r.answer) : r.answer,
-      is_correct: r.isCorrect,
-      time_spent: r.timeSpent,
-    }));
-
-    // Batch insert responses
-    const { error: insertError } = await supabase
+    // Fetch existing responses to avoid overwriting incrementally saved data
+    const { data: existingResponses } = await supabase
       .from("question_responses")
-      .upsert(responsesToInsert, { onConflict: "attempt_id,question_id" });
+      .select("question_id, is_correct")
+      .eq("attempt_id", attemptId);
 
-    if (insertError) {
-      console.error("Batch save error:", insertError);
-      return NextResponse.json(
-        { error: "Failed to save responses" },
-        { status: 500 }
-      );
+    const existingQuestionIds = new Set(
+      existingResponses?.map((r) => r.question_id) || []
+    );
+
+    // Only insert responses that weren't already saved incrementally
+    const responsesToInsert = responses
+      .filter((r: any) => !existingQuestionIds.has(r.questionId))
+      .map((r: any) => ({
+        attempt_id: attemptId,
+        question_id: r.questionId,
+        user_answer: typeof r.answer === 'object' ? JSON.stringify(r.answer) : r.answer,
+        is_correct: r.isCorrect,
+        score: r.score ?? null,
+        time_spent: r.timeSpent,
+      }));
+
+    // Batch insert only new responses (if any)
+    if (responsesToInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from("question_responses")
+        .insert(responsesToInsert);
+
+      if (insertError) {
+        console.error("Batch save error:", insertError);
+        return NextResponse.json(
+          { error: "Failed to save responses" },
+          { status: 500 }
+        );
+      }
     }
 
-    // Calculate score
-    const correctCount = responses.filter((r: any) => r.isCorrect).length;
+    // Calculate score based on ALL saved responses (existing + newly inserted)
+    // Only count evaluated responses for score calculation
+    const { data: allResponses } = await supabase
+      .from("question_responses")
+      .select("is_correct, evaluation_status")
+      .eq("attempt_id", attemptId);
+
+    // Only count evaluated responses as correct
+    // Pending evaluations are not counted as correct or incorrect yet
+    const evaluatedResponses = allResponses?.filter((r) => r.evaluation_status === 'evaluated') || [];
+    const correctCount = evaluatedResponses.filter((r) => r.is_correct).length || 0;
     const completedAt = new Date();
 
     // Calculate time_spent (completed_at - started_at in seconds)
     const startedAt = new Date(attempt.started_at);
     const timeSpentSeconds = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000);
 
-    // Calculate score (correct_answers / total_questions) as decimal
-    const scoreDecimal = correctCount / attempt.total_questions;
+    // Calculate score based on evaluated responses only
+    // If there are pending evaluations, the score will be partial
+    const pendingCount = allResponses?.filter((r) => r.evaluation_status === 'pending').length || 0;
+    const scoreDecimal = evaluatedResponses.length > 0
+      ? correctCount / attempt.total_questions
+      : 0; // If no responses evaluated yet, score is 0
 
     // Update attempt status and score
     const { error: updateError } = await supabase
@@ -89,6 +117,10 @@ export async function POST(
     return NextResponse.json({
       success: true,
       redirect: `/quizzes/${quizId}/results?attempt=${attemptId}`,
+      pendingEvaluations: pendingCount,
+      message: pendingCount > 0
+        ? `Quiz completed with ${pendingCount} answer${pendingCount > 1 ? 's' : ''} pending evaluation. Results will update when evaluations complete.`
+        : undefined
     });
 
   } catch (error) {

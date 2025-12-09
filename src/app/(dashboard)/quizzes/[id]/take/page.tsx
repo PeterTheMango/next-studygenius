@@ -1,94 +1,268 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { QuizPlayer } from "@/components/quiz/quiz-player";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import { ResumeQuizBanner } from "@/components/quiz/resume-quiz-banner";
+import {
+  getLocalResponses,
+  mergeResponses,
+  getStartingQuestionIndex,
+  type SavedResponse,
+} from "@/lib/quiz-sync";
+import { applyQuestionOrder } from "@/lib/shuffle";
+import { toast } from "sonner";
 
-export default async function TakeQuizPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const supabase = await createClient();
+interface Question {
+  id: string;
+  type: string;
+  topic: string;
+  difficulty: string;
+  questionText: string;
+  options?: string[];
+  hint?: string;
+  timeEstimate: number;
+  matchingPairs?: { left: string; right: string }[];
+  orderingItems?: string[];
+  correctAnswer?: string;
+  explanation?: string;
+  sourceReference?: string;
+}
 
-  // Fetch the quiz to start it
-  // We'll use the start API logic or just fetch here. 
-  // Ideally, the QuizPlayer component should probably initialize the attempt via API on mount 
-  // OR we create the attempt here server-side.
-  // The PRD `QuizPlayer` takes `questions` as prop.
-  // We need to fetch questions.
-  
-  // Note: This relies on Supabase being configured and accessible.
-  // If not, this page will error out.
-  
-  // For the sake of the migration demonstration, we will try to fetch.
-  // If it fails (no DB), we might need a fallback or it will just 500.
-  
-  // Let's assume the Start API endpoint is the way to go, but we can't call our own API easily from Server Component without full URL.
-  // Better to fetch data directly from DB here.
-  
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-      // redirect("/login"); // Commented out to avoid redirect loops if auth is broken
+interface InProgressAttempt {
+  id: string;
+  startedAt: string;
+  answeredCount: number;
+  responses: SavedResponse[];
+  questionOrder?: {
+    questions: string[];
+    optionSeeds: Record<string, number>;
+  };
+}
+
+interface QuizData {
+  id: string;
+  mode: string;
+  settings?: {
+    timeLimit?: number;
+  };
+}
+
+export default function TakeQuizPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: quizId } = use(params);
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [quiz, setQuiz] = useState<QuizData | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [attemptId, setAttemptId] = useState<string>("");
+  const [inProgressAttempt, setInProgressAttempt] =
+    useState<InProgressAttempt | null>(null);
+  const [shouldShowPlayer, setShouldShowPlayer] = useState(false);
+  const [initialResponses, setInitialResponses] = useState<
+    Map<string, SavedResponse>
+  >(new Map());
+  const [startingIndex, setStartingIndex] = useState(0);
+  const [questionOrder, setQuestionOrder] = useState<string[]>([]);
+  const [optionSeeds, setOptionSeeds] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    loadQuizData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const loadQuizData = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch quiz and check for in-progress attempts
+      const res = await fetch(`/api/quizzes/${quizId}/check-progress`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load quiz");
+      }
+
+      setQuiz(data.quiz);
+
+      if (data.inProgressAttempt) {
+        // User has an in-progress attempt - show banner
+        setInProgressAttempt(data.inProgressAttempt);
+        setAttemptId(data.inProgressAttempt.id);
+
+        // Store question order and option seeds if available
+        if (data.inProgressAttempt.questionOrder) {
+          const storedOrder = data.inProgressAttempt.questionOrder.questions || [];
+          const storedSeeds = data.inProgressAttempt.questionOrder.optionSeeds || {};
+
+          setQuestionOrder(storedOrder);
+          setOptionSeeds(storedSeeds);
+
+          // Apply shuffled order immediately if we have it
+          if (storedOrder.length > 0) {
+            const shuffledQuestions = applyQuestionOrder(data.questions, storedOrder);
+            setQuestions(shuffledQuestions);
+          } else {
+            setQuestions(data.questions);
+          }
+        } else {
+          setQuestions(data.questions);
+        }
+      } else {
+        // Set questions in original order initially
+        setQuestions(data.questions);
+        // No in-progress attempt - create new one and start immediately
+        await createNewAttempt();
+      }
+    } catch (error) {
+      console.error("Load quiz error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to load quiz"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createNewAttempt = async () => {
+    try {
+      const res = await fetch(`/api/quizzes/${quizId}/start`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start quiz");
+      }
+
+      setAttemptId(data.attempt.id);
+
+      // Store question order and option seeds from new attempt
+      if (data.attempt.questionOrder && data.attempt.optionSeeds) {
+        setQuestionOrder(data.attempt.questionOrder);
+        setOptionSeeds(data.attempt.optionSeeds);
+
+        // Apply shuffled order to questions immediately
+        if (data.attempt.questionOrder.length > 0 && questions.length > 0) {
+          const shuffledQuestions = applyQuestionOrder(questions, data.attempt.questionOrder);
+          setQuestions(shuffledQuestions);
+        }
+      }
+
+      setShouldShowPlayer(true);
+    } catch (error) {
+      console.error("Create attempt error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to start quiz"
+      );
+    }
+  };
+
+  const handleResume = () => {
+    if (!inProgressAttempt) return;
+
+    // Merge local and database responses
+    const localResponses = getLocalResponses(inProgressAttempt.id);
+    const merged = mergeResponses(localResponses, inProgressAttempt.responses);
+
+    // Convert to SavedResponse Map for initialResponses
+    const savedResponsesMap = new Map<string, SavedResponse>();
+    inProgressAttempt.responses.forEach((resp) => {
+      savedResponsesMap.set(resp.questionId, resp);
+    });
+
+    // Overlay with merged data (which includes local responses)
+    merged.forEach((value, questionId) => {
+      const existing = savedResponsesMap.get(questionId);
+      savedResponsesMap.set(questionId, {
+        id: existing?.id || questionId,
+        questionId: questionId,
+        answer: value.answer,
+        isCorrect: value.isCorrect,
+        score: value.score ?? null,
+        timeSpent: value.timeSpent,
+        answeredAt: existing?.answeredAt || new Date().toISOString(),
+      });
+    });
+
+    // Questions are already in shuffled order from loadQuizData
+    // Calculate starting index (first unanswered question in shuffled order)
+    const answeredIds = new Set(merged.keys());
+    const startIdx = getStartingQuestionIndex(questions, answeredIds);
+
+    setInitialResponses(savedResponsesMap);
+    setStartingIndex(startIdx);
+    setShouldShowPlayer(true);
+    setInProgressAttempt(null); // Hide banner
+
+    toast.success(`Resuming from question ${startIdx + 1}`);
+  };
+
+  const handleRestart = () => {
+    // The banner component handles the abandon API call
+    // After successful abandon, it will reload the page
+    router.refresh();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+            <div className="h-64 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // Fetch quiz and questions
-  const { data: quiz, error } = await supabase
-    .from("quizzes")
-    .select(`*, questions(*)`)
-    .eq("id", id)
-    .single();
-
-  if (error || !quiz) {
-    return <div>Quiz not found or error loading quiz.</div>;
+  if (!quiz || questions.length === 0) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-muted-foreground">
+            Quiz not found or has no questions.
+          </p>
+        </div>
+      </div>
+    );
   }
-
-  // We also need an attempt ID. We should create one.
-  const { data: attempt, error: attemptError } = await supabase
-    .from("quiz_attempts")
-    .insert({
-        quiz_id: id,
-        user_id: user?.id,
-        mode: quiz.mode,
-        total_questions: quiz.questions.length,
-        status: 'in_progress'
-    })
-    .select()
-    .single();
-
-  if (attemptError || !attempt) {
-      return <div>Failed to start quiz attempt.</div>;
-  }
-  
-  // Sort questions
-  const sortedQuestions = quiz.questions.sort((a: any, b: any) => a.order_index - b.order_index);
-
-  // Map to frontend interface
-  const mappedQuestions = sortedQuestions.map((q: any) => ({
-      id: q.id,
-      type: q.type,
-      topic: q.topic,
-      difficulty: q.difficulty,
-      questionText: q.question_text,
-      options: (q.type === 'multiple_choice' || q.type === 'true_false') ? q.options : undefined,
-      hint: q.hint,
-      timeEstimate: q.time_estimate,
-      matchingPairs: q.type === 'matching' ? q.options : undefined,
-      orderingItems: q.type === 'ordering' ? q.options : undefined,
-      correctAnswer: q.correct_answer,
-      explanation: q.explanation,
-      sourceReference: q.source_reference
-  }));
-  
-  // Correction: In generate route I mapped:
-  // options: q.options || null
-  // But for matching, q.options is undefined in my generator output (it uses matchingPairs).
-  // I need to fix `generate/route.ts` to save matchingPairs/orderingItems into the `options` column.
 
   return (
     <div className="container mx-auto py-8">
-      <QuizPlayer 
-        quizId={id}
-        attemptId={attempt.id}
-        mode={quiz.mode}
-        questions={mappedQuestions}
-        timeLimit={quiz.settings?.timeLimit}
-      />
+      <div className="max-w-3xl mx-auto">
+        {/* Show resume banner if in-progress attempt exists and player not started */}
+        {inProgressAttempt && !shouldShowPlayer && (
+          <ResumeQuizBanner
+            attemptId={inProgressAttempt.id}
+            quizId={quizId}
+            answeredCount={inProgressAttempt.answeredCount}
+            totalQuestions={questions.length}
+            lastAnsweredAt={inProgressAttempt.startedAt}
+            onResume={handleResume}
+            onRestart={handleRestart}
+          />
+        )}
+
+        {/* Show quiz player when ready */}
+        {shouldShowPlayer && attemptId && quiz && (
+          <QuizPlayer
+            quizId={quizId}
+            attemptId={attemptId}
+            mode={quiz.mode as "learn" | "revision" | "test"}
+            questions={questions}
+            timeLimit={quiz.settings?.timeLimit}
+            initialResponses={initialResponses}
+            startingQuestionIndex={startingIndex}
+            optionSeeds={optionSeeds}
+          />
+        )}
+      </div>
     </div>
   );
 }

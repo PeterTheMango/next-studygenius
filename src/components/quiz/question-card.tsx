@@ -2,8 +2,10 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Check, X, ArrowUp, ArrowDown, ArrowRight, Lightbulb, GripVertical } from "lucide-react";
 import { useState, useEffect } from "react";
+import { shuffleOptions } from "@/lib/shuffle";
 
 interface Question {
   id: string;
@@ -27,6 +29,7 @@ interface QuestionCardProps {
   showHint?: boolean;
   showFeedback?: boolean; // Added to show feedback inline
   isCorrect?: boolean;
+  optionSeed?: number; // Seed for shuffling options
 }
 
 export function QuestionCard({
@@ -37,6 +40,7 @@ export function QuestionCard({
   showHint = false,
   showFeedback = false,
   isCorrect,
+  optionSeed,
 }: QuestionCardProps) {
   
   const difficultyColors = {
@@ -44,6 +48,53 @@ export function QuestionCard({
     medium: "bg-yellow-100 text-yellow-800",
     hard: "bg-red-100 text-red-800",
   };
+
+  // -- Hint Logic --
+  const [isHintVisible, setIsHintVisible] = useState(false);
+
+  // Reset hint visibility when question changes
+  useEffect(() => {
+    setIsHintVisible(false);
+  }, [question.id]);
+
+  // -- Option Shuffling Logic --
+  const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number>(-1);
+
+  useEffect(() => {
+    if ((question.type === 'multiple_choice' || question.type === 'true_false') && question.options) {
+      // Shuffle options using the provided seed for consistency
+      if (optionSeed !== undefined) {
+        const shuffled = shuffleOptions(question.options, optionSeed);
+
+        // Find which position the correct answer moved to
+        const correctOriginalLabel = question.correctAnswer;
+        const correctOptionIndex = shuffled.findIndex(opt =>
+          opt.charAt(0) === correctOriginalLabel || opt === correctOriginalLabel
+        );
+        setCorrectAnswerIndex(correctOptionIndex);
+
+        // Renumber options to always show A, B, C, D in order
+        const renumbered = shuffled.map((option, index) => {
+          // Remove original letter prefix (e.g., "A) ", "B) ", etc.)
+          const textWithoutLabel = option.replace(/^[A-Z]\)\s*/, '');
+          // Add new letter prefix based on position
+          const newLabel = String.fromCharCode(65 + index); // 65 = 'A'
+          return `${newLabel}) ${textWithoutLabel}`;
+        });
+
+        setShuffledOptions(renumbered);
+      } else {
+        // Fallback to original order if no seed provided
+        setShuffledOptions(question.options);
+        // Find correct answer index in original order
+        const correctIndex = question.options?.findIndex(opt =>
+          opt.charAt(0) === question.correctAnswer || opt === question.correctAnswer
+        ) ?? -1;
+        setCorrectAnswerIndex(correctIndex);
+      }
+    }
+  }, [question.id, question.options, optionSeed, question.type, question.correctAnswer]);
 
   // -- Ordering Logic --
   const [shuffledOrder, setShuffledOrder] = useState<string[]>([]);
@@ -152,15 +203,17 @@ export function QuestionCard({
       {/* Multiple Choice / True-False */}
       {(question.type === "multiple_choice" ||
         question.type === "true_false") &&
-        question.options && (
+        shuffledOptions.length > 0 && (
           <div className="space-y-3">
-            {question.options.map((option, index) => {
+            {shuffledOptions.map((option, index) => {
                 const isSelected = selectedAnswer === option.charAt(0) || selectedAnswer === option;
+                const isCorrectOption = index === correctAnswerIndex;
+
                 // Determine styling based on feedback
                 let style = "flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ";
-                
+
                 if (showFeedback) {
-                    if (option.charAt(0) === question.correctAnswer || option === question.correctAnswer) {
+                    if (isCorrectOption) {
                         style += "border-green-500 bg-green-50 text-green-900";
                     } else if (isSelected) {
                         style += "border-red-500 bg-red-50 text-red-900";
@@ -180,7 +233,7 @@ export function QuestionCard({
                         <input
                         type="radio"
                         name="answer"
-                        value={option.charAt(0)} // Assuming 'A', 'B' etc. or full 'True'/'False'
+                        value={option.charAt(0)} // Use the new label (A, B, C, D)
                         checked={isSelected}
                         onChange={() => onSelectAnswer(question.type === 'multiple_choice' ? option.charAt(0) : option)}
                         disabled={disabled}
@@ -188,8 +241,8 @@ export function QuestionCard({
                         />
                         <span className="font-medium">{option}</span>
                     </div>
-                    {showFeedback && (option.charAt(0) === question.correctAnswer || option === question.correctAnswer) && <Check className="w-5 h-5 text-green-600" />}
-                    {showFeedback && isSelected && (option.charAt(0) !== question.correctAnswer && option !== question.correctAnswer) && <X className="w-5 h-5 text-red-600" />}
+                    {showFeedback && isCorrectOption && <Check className="w-5 h-5 text-green-600" />}
+                    {showFeedback && isSelected && !isCorrectOption && <X className="w-5 h-5 text-red-600" />}
                 </label>
                 )
             })}
@@ -312,14 +365,28 @@ export function QuestionCard({
       )}
 
       {showHint && question.hint && (
-        <div className="mt-4 p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg">
-            <div className="flex items-center gap-2 font-semibold mb-1">
+        <div className="mt-4">
+          {!isHintVisible ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsHintVisible(true)}
+              className="text-amber-700 border-amber-300 hover:bg-amber-50 hover:border-amber-400"
+            >
+              <Lightbulb className="w-4 h-4 mr-2" />
+              Show Hint
+            </Button>
+          ) : (
+            <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg">
+              <div className="flex items-center gap-2 font-semibold mb-1">
                 <Lightbulb className="w-4 h-4" />
                 Hint:
-            </div>
-            <div className="text-sm leading-relaxed">
+              </div>
+              <div className="text-sm leading-relaxed">
                 {question.hint}
+              </div>
             </div>
+          )}
         </div>
       )}
 

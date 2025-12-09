@@ -195,6 +195,7 @@ export interface Database {
           total_questions: number
           correct_answers: number | null
           status: 'in_progress' | 'completed' | 'abandoned' | null
+          question_order: Json | null
         }
         Insert: {
           id?: string
@@ -208,6 +209,7 @@ export interface Database {
           total_questions: number
           correct_answers?: number | null
           status?: 'in_progress' | 'completed' | 'abandoned' | null
+          question_order?: Json | null
         }
         Update: {
           id?: string
@@ -221,6 +223,7 @@ export interface Database {
           total_questions?: number
           correct_answers?: number | null
           status?: 'in_progress' | 'completed' | 'abandoned' | null
+          question_order?: Json | null
         }
       }
       question_responses: {
@@ -230,8 +233,10 @@ export interface Database {
           question_id: string
           user_answer: string | null
           is_correct: boolean | null
+          score: number | null
           time_spent: number | null
           answered_at: string | null
+          evaluation_status: 'pending' | 'evaluated' | 'failed'
         }
         Insert: {
           id?: string
@@ -239,8 +244,10 @@ export interface Database {
           question_id: string
           user_answer?: string | null
           is_correct?: boolean | null
+          score?: number | null
           time_spent?: number | null
           answered_at?: string | null
+          evaluation_status?: 'pending' | 'evaluated' | 'failed'
         }
         Update: {
           id?: string
@@ -248,8 +255,10 @@ export interface Database {
           question_id?: string
           user_answer?: string | null
           is_correct?: boolean | null
+          score?: number | null
           time_spent?: number | null
           answered_at?: string | null
+          evaluation_status?: 'pending' | 'evaluated' | 'failed'
         }
       }
     }

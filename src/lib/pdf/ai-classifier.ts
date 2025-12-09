@@ -48,11 +48,11 @@ export async function classifyPagesWithAI(
       config: {
         responseMimeType: "application/json",
         temperature: 0.1, // Low temperature for consistent classification
-        maxOutputTokens: 2048,
       },
     });
 
     const responseText = response.text || "[]";
+
     const parsed = JSON.parse(responseText);
 
     // Validate and return results

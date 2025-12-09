@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { shuffleQuestions, generateOptionSeeds } from "@/lib/shuffle";
 
 export async function POST(
   request: NextRequest,
@@ -45,7 +46,26 @@ export async function POST(
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
-    // Create attempt
+    // Sort questions by order_index first
+    const sortedQuestions = quiz.questions.sort(
+      (a: any, b: any) => a.order_index - b.order_index
+    );
+
+    // Generate shuffled question order (for all modes)
+    // We need to create a temporary ID for seeding since we don't have attemptId yet
+    const tempSeed = `${quizId}-${user.id}-${Date.now()}`;
+    const questionOrder = shuffleQuestions(
+      sortedQuestions.map((q: any) => ({ id: q.id })),
+      tempSeed
+    );
+
+    // Generate option shuffle seeds for each question
+    const optionSeeds = generateOptionSeeds(
+      sortedQuestions.map((q: any) => ({ id: q.id })),
+      tempSeed
+    );
+
+    // Create attempt with shuffled question order
     const { data: attempt, error: attemptError } = await supabase
       .from("quiz_attempts")
       .insert({
@@ -54,21 +74,21 @@ export async function POST(
         mode: quiz.mode,
         total_questions: quiz.questions.length,
         status: "in_progress",
+        question_order: {
+          questions: questionOrder,
+          optionSeeds: optionSeeds,
+        },
       })
       .select()
       .single();
 
     if (attemptError) {
+      console.error("Attempt creation error:", attemptError);
       return NextResponse.json(
         { error: "Failed to start quiz" },
         { status: 500 }
       );
     }
-
-    // Sort questions by order_index
-    const sortedQuestions = quiz.questions.sort(
-      (a: any, b: any) => a.order_index - b.order_index
-    );
 
     // Remove hints for non-learn modes
     const questions = sortedQuestions.map((q: any) => ({
@@ -91,6 +111,8 @@ export async function POST(
         startedAt: attempt.started_at,
         timeLimit: quiz.settings?.timeLimit || null,
         totalQuestions: questions.length,
+        questionOrder: questionOrder,
+        optionSeeds: optionSeeds,
       },
       questions,
     });
