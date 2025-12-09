@@ -38,8 +38,12 @@ function isAllowedOrigin(request: NextRequest): boolean {
   // Check Host header (last resort, only for localhost-like values or app URL host)
   const host = request.headers.get("host");
   if (host) {
-    const isLocal = host.startsWith("localhost") || host.startsWith("127.0.0.1");
-    const isAppUrlHost = NEXT_PUBLIC_APP_URL && host.startsWith(new URL(NEXT_PUBLIC_APP_URL).host);
+    const isLocal =
+      host.startsWith("localhost") || host.startsWith("127.0.0.1");
+    const isAppUrlHost =
+      typeof NEXT_PUBLIC_APP_URL === "string" &&
+      NEXT_PUBLIC_APP_URL.trim() !== "" &&
+      host.startsWith(new URL(NEXT_PUBLIC_APP_URL).host);
     return isLocal || isAppUrlHost;
   }
 
