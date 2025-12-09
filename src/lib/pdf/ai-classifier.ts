@@ -1,4 +1,4 @@
-import { genAI } from "../gemini/client";
+import { genAI, GEMINI_MODEL } from "../gemini/client";
 import type { PageClassification } from "@/types/database";
 import type { ExtractedPage } from "./page-processor";
 
@@ -43,7 +43,7 @@ export async function classifyPagesWithAI(
 
   try {
     const response = await genAI.models.generateContent({
-      model: "gemini-2.0-flash-exp", // Fast and cost-effective model
+      model: GEMINI_MODEL, // Fast and cost-effective model
       contents: [{ text: prompt }],
       config: {
         responseMimeType: "application/json",
@@ -103,10 +103,7 @@ CLASSIFICATION RULES:
 
   // Add each page to classify
   pagesData.forEach(({ page, context }, index) => {
-    const position = getPositionLabel(
-      context.pageNumber,
-      context.totalPages
-    );
+    const position = getPositionLabel(context.pageNumber, context.totalPages);
 
     const contentPreview =
       page.content.length > 800

@@ -32,7 +32,7 @@ export default async function QuizzesPage() {
         </div>
         <Link 
           href="/documents" 
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:scale-[1.02] transition-all"
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:scale-[1.02] transition-all whitespace-nowrap"
         >
           <Plus className="w-5 h-5" />
           New Quiz

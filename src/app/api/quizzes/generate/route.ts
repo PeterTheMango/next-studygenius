@@ -11,7 +11,14 @@ const GenerateQuizSchema = z.object({
     questionCount: z.number().min(5).max(50).optional(),
     questionTypes: z
       .array(
-        z.enum(["multiple_choice", "true_false", "fill_blank", "short_answer", "matching", "ordering"])
+        z.enum([
+          "multiple_choice",
+          "true_false",
+          "fill_blank",
+          "short_answer",
+          "matching",
+          "ordering",
+        ])
       )
       .min(1),
     difficulty: z.enum(["mixed", "easy", "medium", "hard"]).default("mixed"),
@@ -21,7 +28,6 @@ const GenerateQuizSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  console.log("POST /api/quizzes/generate called");
   try {
     const supabase = await createClient();
 
@@ -110,9 +116,12 @@ export async function POST(request: NextRequest) {
         topic: q.topic,
         difficulty: q.difficulty,
         question_text: q.questionText,
-        options: q.type === 'matching' ? q.matchingPairs : 
-                 q.type === 'ordering' ? q.orderingItems : 
-                 q.options || null,
+        options:
+          q.type === "matching"
+            ? q.matchingPairs
+            : q.type === "ordering"
+            ? q.orderingItems
+            : q.options || null,
         correct_answer: q.correctAnswer || "", // Handle optional correct answer
         explanation: q.explanation,
         hint: q.hint || null,
@@ -140,20 +149,17 @@ export async function POST(request: NextRequest) {
         updates.settings = {
           ...settings,
           timeLimit: questions.length * settings.timeLimitPerQuestion,
-          questionCount: questions.length // Store actual count
+          questionCount: questions.length, // Store actual count
         };
       } else {
         // Just update count in settings for consistency
         updates.settings = {
-            ...settings,
-            questionCount: questions.length
+          ...settings,
+          questionCount: questions.length,
         };
       }
 
-      await supabase
-        .from("quizzes")
-        .update(updates)
-        .eq("id", quiz.id);
+      await supabase.from("quizzes").update(updates).eq("id", quiz.id);
 
       return NextResponse.json(
         {

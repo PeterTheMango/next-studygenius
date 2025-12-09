@@ -100,7 +100,7 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
 
       // Delay before redirect to show DONE state
       setTimeout(() => {
-        router.push(`/quizzes/${data.quiz.id}/take`);
+        router.push(`/quizzes/${data.quiz.id}`);
       }, 1000);
     } catch (error: any) {
       clearTimeout(t1);

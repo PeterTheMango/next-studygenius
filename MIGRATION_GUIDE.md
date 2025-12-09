@@ -173,3 +173,15 @@ If you encounter issues:
 2. Query `page_metadata` in database to see classification details
 3. Verify the migration was applied successfully
 4. Test with a simple PDF first (few pages, clear structure)
+# Change Title: Fix New Quiz button text wrapping
+## Description of the change
+The 'New Quiz' button text in the quizzes page was wrapping onto two lines when the screen size was small. This change adds the 'whitespace-nowrap' Tailwind CSS class to the button to prevent the text from wrapping.
+Code Changes (Only things that we're replaced):
+Before Code Change
+```
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:scale-[1.02] transition-all"
+```
+After Code Change
+```
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:scale-[1.02] transition-all whitespace-nowrap"
+```

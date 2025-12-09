@@ -59,8 +59,7 @@ export async function generateQuestions({
       contents: [{ text: prompt }],
       config: {
         responseMimeType: "application/json",
-        temperature: 0.3, // Lower for consistency
-        maxOutputTokens: 8192,
+        temperature: 0.3,
       },
     });
 
