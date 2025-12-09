@@ -66,7 +66,7 @@ QUESTION TYPE RULES:
 - true_false: options should be ["True", "False"]. correctAnswer should be "True" or "False".
 - fill_blank: questionText should contain "___" for the blank. correctAnswer is the word/phrase.
 - short_answer: No options needed. correctAnswer should be a brief expected response.
-- matching: Provide 3-5 pairs in 'matchingPairs'. 'questionText' should be "Match the following...". Ignore 'options' and 'correctAnswer'.
+- matching: Provide 3-5 pairs in 'matchingPairs'. CRITICAL: Each 'left' value must be UNIQUE (no duplicates). Each 'right' value must be UNIQUE (no duplicates). 'questionText' should be "Match the following...". Ignore 'options' and 'correctAnswer'.
 - ordering: Provide 3-5 items in 'orderingItems' in the CORRECT chronological or logical order. 'questionText' should be "Arrange the following...". Ignore 'options' and 'correctAnswer'.`;
 
 export function buildPrompt(

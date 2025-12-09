@@ -102,17 +102,17 @@ export default function TakeQuizPage({
 
           // Apply shuffled order immediately if we have it
           if (storedOrder.length > 0) {
-            const shuffledQuestions = applyQuestionOrder(data.questions, storedOrder);
+            const shuffledQuestions = applyQuestionOrder(data.questions as Question[], storedOrder);
             setQuestions(shuffledQuestions);
           } else {
-            setQuestions(data.questions);
+            setQuestions(data.questions as Question[]);
           }
         } else {
-          setQuestions(data.questions);
+          setQuestions(data.questions as Question[]);
         }
       } else {
         // Set questions in original order initially
-        setQuestions(data.questions);
+        setQuestions(data.questions as Question[]);
         // No in-progress attempt - create new one and start immediately
         await createNewAttempt();
       }
@@ -185,6 +185,7 @@ export default function TakeQuizPage({
         score: value.score ?? null,
         timeSpent: value.timeSpent,
         answeredAt: existing?.answeredAt || new Date().toISOString(),
+        evaluationStatus: value.evaluationStatus,
       });
     });
 

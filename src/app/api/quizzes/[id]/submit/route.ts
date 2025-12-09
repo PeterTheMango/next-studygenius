@@ -79,10 +79,28 @@ export async function POST(
     // Update attempt stats
     const { data: responses } = await supabase
       .from("question_responses")
-      .select("is_correct")
+      .select("question_id, is_correct, attempt_number")
       .eq("attempt_id", attemptId);
 
-    const correctCount = responses?.filter((r) => r.is_correct).length || 0;
+    // Group responses by question_id to handle retries correctly
+    const responsesByQuestion = (responses || []).reduce((acc: Record<string, any[]>, response) => {
+      if (!acc[response.question_id]) {
+        acc[response.question_id] = [];
+      }
+      acc[response.question_id].push(response);
+      return acc;
+    }, {});
+
+    // Count correct answers, one per question (latest correct response wins)
+    let correctCount = 0;
+    for (const questionId in responsesByQuestion) {
+      const questionResponses = responsesByQuestion[questionId];
+      questionResponses.sort((a, b) => (a.attempt_number || 1) - (b.attempt_number || 1));
+      const latestResponse = questionResponses[questionResponses.length - 1];
+      if (latestResponse.is_correct) {
+        correctCount++;
+      }
+    }
 
     await supabase
       .from("quiz_attempts")

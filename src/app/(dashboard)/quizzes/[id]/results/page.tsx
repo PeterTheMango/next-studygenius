@@ -32,7 +32,9 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
       question_responses (
         question_id,
         user_answer,
-        is_correct
+        is_correct,
+        attempt_number,
+        is_retry_round
       )
     `)
     .eq('id', attemptId)
@@ -92,11 +94,33 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
   // Sort questions
   const sortedQuestions = (quiz.questions || []).sort((a, b) => a.order_index - b.order_index)
 
-  // Map responses
-  const answersMap = (attempt.question_responses || []).reduce((acc: Record<string, { userAnswer: string; isCorrect: boolean }>, response: any) => {
-    acc[response.question_id] = {
-      userAnswer: response.user_answer,
-      isCorrect: response.is_correct
+  // Map responses - group by question and track retry attempts
+  const responsesByQuestion = (attempt.question_responses || []).reduce((acc: Record<string, any[]>, response: any) => {
+    if (!acc[response.question_id]) {
+      acc[response.question_id] = []
+    }
+    acc[response.question_id].push(response)
+    return acc
+  }, {})
+
+  // Create answers map with retry information
+  const answersMap = Object.entries(responsesByQuestion).reduce((acc: Record<string, any>, [questionId, responses]) => {
+    // Sort by attempt number to get chronological order
+    const sortedResponses = (responses as any[]).sort((a, b) => (a.attempt_number || 1) - (b.attempt_number || 1))
+
+    // Get the latest/final response for the question
+    const finalResponse = sortedResponses[sortedResponses.length - 1]
+    const firstAttempt = sortedResponses.find(r => r.attempt_number === 1)
+    const hasRetries = sortedResponses.length > 1
+
+    acc[questionId] = {
+      userAnswer: finalResponse.user_answer,
+      isCorrect: finalResponse.is_correct,
+      attemptNumber: finalResponse.attempt_number || 1,
+      totalAttempts: sortedResponses.length,
+      hasRetries,
+      firstAttemptCorrect: firstAttempt?.is_correct || false,
+      allAttempts: sortedResponses
     }
     return acc
   }, {})

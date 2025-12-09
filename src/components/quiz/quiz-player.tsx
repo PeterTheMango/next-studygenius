@@ -69,6 +69,13 @@ interface Response {
   score?: number | null;
   timeSpent: number;
   evaluationStatus: 'pending' | 'evaluated' | 'failed';
+  attemptNumber?: number;
+  isRetryRound?: boolean;
+}
+
+interface MasteryProgress {
+  consecutiveCorrect: number; // Track consecutive correct answers (need 2 for mastery)
+  totalAttempts: number; // Total number of attempts for this question
 }
 
 export function QuizPlayer({
@@ -110,6 +117,7 @@ export function QuizPlayer({
           isCorrect: value.isCorrect,
           score: value.score ?? undefined,
           timeSpent: value.timeSpent,
+          evaluationStatus: value.evaluationStatus,
         });
       });
       return responseMap;
@@ -121,10 +129,25 @@ export function QuizPlayer({
   const [pendingSaveCount, setPendingSaveCount] = useState(0);
   const [pendingEvaluationCount, setPendingEvaluationCount] = useState(0);
 
-  const currentQuestion = questions[currentIndex];
-  const isLastQuestion = currentIndex === questions.length - 1;
-  const progress =
-    ((currentIndex + (submitted ? 1 : 0)) / questions.length) * 100;
+  // Retry round state (learning mode only)
+  const [isRetryRound, setIsRetryRound] = useState(false);
+  const [retryQuestions, setRetryQuestions] = useState<Question[]>([]);
+  const [retryQuestionIndex, setRetryQuestionIndex] = useState(0);
+  const [masteryProgress, setMasteryProgress] = useState<Map<string, MasteryProgress>>(new Map());
+  const [firstAttemptResponses, setFirstAttemptResponses] = useState<Map<string, Response>>(new Map());
+
+  // Determine current question based on mode (normal or retry round)
+  const currentQuestion = isRetryRound
+    ? retryQuestions[retryQuestionIndex]
+    : questions[currentIndex];
+
+  const isLastQuestion = isRetryRound
+    ? false // Never last in retry round until mastery achieved
+    : currentIndex === questions.length - 1;
+
+  const progress = isRetryRound
+    ? 100 // Show full progress in retry round
+    : ((currentIndex + (submitted ? 1 : 0)) / questions.length) * 100;
   
   const correctCount = Array.from(responses.values()).filter(r => r.isCorrect).length;
 
@@ -149,7 +172,7 @@ export function QuizPlayer({
 
     setSubmitted(false);
     setFeedback(null);
-  }, [currentIndex, mode, responses, currentQuestion.id]);
+  }, [currentIndex, mode, currentQuestion.id]); // Removed 'responses' to prevent premature reset
 
   // Setup sync listeners for online/offline detection
   useEffect(() => {
@@ -222,7 +245,8 @@ export function QuizPlayer({
             questionId: currentQuestion.id,
             answer: selectedAnswer,
             isCorrect,
-            timeSpent
+            timeSpent,
+            evaluationStatus: 'evaluated'
         });
         return newMap;
     });
@@ -331,9 +355,18 @@ export function QuizPlayer({
       }
   };
 
-  const handleNext = () => {
-    if (isLastQuestion) {
-      // Store scores in session storage for results page
+  // Function to enter retry round for learning mode
+  const enterRetryRound = () => {
+    if (mode !== 'learn' && mode !== 'revision') return;
+
+    // Find all questions that were answered incorrectly on first attempt
+    const incorrectQuestions = questions.filter(q => {
+      const response = responses.get(q.id);
+      return response && !response.isCorrect;
+    });
+
+    if (incorrectQuestions.length === 0) {
+      // No incorrect questions, proceed to results
       if (typeof window !== 'undefined') {
         const scoresData = Array.from(responses.values()).map(r => ({
           questionId: r.questionId,
@@ -345,13 +378,116 @@ export function QuizPlayer({
           JSON.stringify(scoresData)
         );
       }
-      // Convert map to array and submit
       const allResponses = Array.from(responses.values());
       performFinalSubmission(allResponses);
-    } else {
-      setCurrentIndex((prev) => prev + 1);
+      return;
+    }
+
+    // Save first attempt responses
+    setFirstAttemptResponses(new Map(responses));
+
+    // Initialize mastery progress for each incorrect question
+    const initialProgress = new Map<string, MasteryProgress>();
+    incorrectQuestions.forEach(q => {
+      initialProgress.set(q.id, {
+        consecutiveCorrect: 0,
+        totalAttempts: 0
+      });
+    });
+    setMasteryProgress(initialProgress);
+
+    // Shuffle retry questions for variety
+    const shuffled = [...incorrectQuestions].sort(() => Math.random() - 0.5);
+    setRetryQuestions(shuffled);
+    setRetryQuestionIndex(0);
+    setIsRetryRound(true);
+    setSubmitted(false);
+    setFeedback(null);
+
+    toast.info(`Let's retry ${incorrectQuestions.length} question${incorrectQuestions.length > 1 ? 's' : ''} until you master them!`, {
+      duration: 4000
+    });
+  };
+
+  const handleNext = () => {
+    if (isRetryRound) {
+      // In retry round, move to next retry question or cycle back
+      const nextIndex = retryQuestionIndex + 1;
+
+      // Check if all questions have achieved mastery
+      const allMastered = Array.from(masteryProgress.values()).every(
+        progress => progress.consecutiveCorrect >= 2
+      );
+
+      if (allMastered) {
+        // All questions mastered, proceed to results
+        if (typeof window !== 'undefined') {
+          const scoresData = Array.from(responses.values()).map(r => ({
+            questionId: r.questionId,
+            score: r.score,
+            answer: r.answer
+          }));
+          sessionStorage.setItem(
+            `quiz-scores-${attemptId}`,
+            JSON.stringify(scoresData)
+          );
+        }
+        const allResponses = Array.from(responses.values());
+        performFinalSubmission(allResponses);
+        return;
+      }
+
+      if (nextIndex >= retryQuestions.length) {
+        // Reached end of retry questions, cycle back to questions that need more practice
+        const questionsNeedingPractice = retryQuestions.filter(q => {
+          const progress = masteryProgress.get(q.id);
+          return progress && progress.consecutiveCorrect < 2;
+        });
+
+        if (questionsNeedingPractice.length === 0) {
+          // All mastered (shouldn't reach here due to check above)
+          const allResponses = Array.from(responses.values());
+          performFinalSubmission(allResponses);
+          return;
+        }
+
+        // Reshuffle questions that still need practice
+        const reshuffled = [...questionsNeedingPractice].sort(() => Math.random() - 0.5);
+        setRetryQuestions(reshuffled);
+        setRetryQuestionIndex(0);
+      } else {
+        setRetryQuestionIndex(nextIndex);
+      }
+
       setSubmitted(false);
       setFeedback(null);
+    } else {
+      // Normal mode logic
+      if (isLastQuestion) {
+        // Check if we should enter retry round (learning/revision mode only)
+        if (mode === 'learn' || mode === 'revision') {
+          enterRetryRound();
+        } else {
+          // Test mode - go straight to results
+          if (typeof window !== 'undefined') {
+            const scoresData = Array.from(responses.values()).map(r => ({
+              questionId: r.questionId,
+              score: r.score,
+              answer: r.answer
+            }));
+            sessionStorage.setItem(
+              `quiz-scores-${attemptId}`,
+              JSON.stringify(scoresData)
+            );
+          }
+          const allResponses = Array.from(responses.values());
+          performFinalSubmission(allResponses);
+        }
+      } else {
+        setCurrentIndex((prev) => prev + 1);
+        setSubmitted(false);
+        setFeedback(null);
+      }
     }
   };
   
@@ -430,14 +566,52 @@ export function QuizPlayer({
             evaluationStatus = 'evaluated';
         }
 
+        // Calculate attempt number for this question
+        const currentAttemptNumber = isRetryRound
+          ? (masteryProgress.get(currentQuestion.id)?.totalAttempts || 0) + 1
+          : 1;
+
         const newResponse: Response = {
             questionId: currentQuestion.id,
             answer: selectedAnswer,
             isCorrect,
             score,
             timeSpent,
-            evaluationStatus
+            evaluationStatus,
+            attemptNumber: currentAttemptNumber,
+            isRetryRound: isRetryRound
         };
+
+        // Update mastery progress if in retry round
+        if (isRetryRound && isCorrect !== null) {
+          const currentProgress = masteryProgress.get(currentQuestion.id) || {
+            consecutiveCorrect: 0,
+            totalAttempts: 0
+          };
+
+          const updatedProgress: MasteryProgress = {
+            totalAttempts: currentAttemptNumber,
+            consecutiveCorrect: isCorrect
+              ? currentProgress.consecutiveCorrect + 1
+              : 0 // Reset on incorrect answer
+          };
+
+          setMasteryProgress(prev => {
+            const newMap = new Map(prev);
+            newMap.set(currentQuestion.id, updatedProgress);
+            return newMap;
+          });
+
+          // Show mastery feedback
+          if (isCorrect && updatedProgress.consecutiveCorrect === 1) {
+            toast.success("Correct! One more time to master this question.", { duration: 3000 });
+          } else if (isCorrect && updatedProgress.consecutiveCorrect >= 2) {
+            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+            toast.success("🎉 Mastered! You answered correctly twice in a row!", { duration: 4000 });
+          } else if (!isCorrect) {
+            toast.error("Not quite right. Let's keep practicing!", { duration: 3000 });
+          }
+        }
 
         // Update state
         const newResponsesMap = new Map(responses);
@@ -454,6 +628,8 @@ export function QuizPlayer({
           timeSpent,
           timestamp: Date.now(),
           evaluationStatus,
+          attemptNumber: currentAttemptNumber,
+          isRetryRound: isRetryRound
         };
 
         const saveResult = await saveResponse(quizId, quizResponse);
@@ -701,11 +877,71 @@ export function QuizPlayer({
         </Card>
       )}
 
+      {/* Retry Round Banner */}
+      {isRetryRound && (
+        <Card className="p-4 bg-purple-500/10 border-purple-500">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-purple-500 hover:bg-purple-600">
+                  Retry Round
+                </Badge>
+                <span className="text-sm font-medium">Master these questions</span>
+              </div>
+              <span className="text-sm text-muted-foreground">
+                Answer correctly twice in a row
+              </span>
+            </div>
+
+            {/* Mastery Progress */}
+            <div className="space-y-2">
+              {retryQuestions.map((q) => {
+                const progress = masteryProgress.get(q.id);
+                const masteryLevel = progress?.consecutiveCorrect || 0;
+                const isMastered = masteryLevel >= 2;
+
+                return (
+                  <div key={q.id} className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="h-2 flex-1 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ${
+                            isMastered ? 'bg-green-500' : 'bg-purple-500'
+                          }`}
+                          style={{ width: `${(masteryLevel / 2) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground min-w-[3rem]">
+                        {isMastered ? '✓ Mastered' : `${masteryLevel}/2`}
+                      </span>
+                    </div>
+                    {currentQuestion.id === q.id && (
+                      <Badge variant="outline" className="text-xs">Current</Badge>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
-            Question {currentIndex + 1} of {questions.length}
+            {isRetryRound ? (
+              <>
+                Retry Question {retryQuestionIndex + 1} of {retryQuestions.length}
+                {masteryProgress.get(currentQuestion.id) && (
+                  <span className="ml-2">
+                    (Attempt #{(masteryProgress.get(currentQuestion.id)?.totalAttempts || 0) + 1})
+                  </span>
+                )}
+              </>
+            ) : (
+              <>Question {currentIndex + 1} of {questions.length}</>
+            )}
           </p>
           <Badge variant="outline" className="mt-1">
             {currentQuestion.topic}

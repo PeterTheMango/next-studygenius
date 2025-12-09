@@ -36,7 +36,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { attemptId, questionId, answer, isCorrect, score, timeSpent, evaluationStatus = 'evaluated' } = await request.json();
+    const { attemptId, questionId, answer, isCorrect, score, timeSpent, evaluationStatus = 'evaluated', attemptNumber = 1, isRetryRound = false } = await request.json();
 
     // Validate required fields
     if (!attemptId || !questionId || answer === undefined || timeSpent === undefined) {
@@ -82,6 +82,25 @@ export async function POST(
         { error: "Question not found or does not belong to this quiz" },
         { status: 404 }
       );
+    }
+
+    // Check for existing responses to determine the next attempt number
+    const { data: existingResponses, error: existingError } = await supabase
+      .from("question_responses")
+      .select("attempt_number")
+      .eq("attempt_id", attemptId)
+      .eq("question_id", questionId)
+      .order("attempt_number", { ascending: false })
+      .limit(1);
+
+    // Calculate the next attempt number
+    let finalAttemptNumber = attemptNumber;
+    if (existingResponses && existingResponses.length > 0) {
+      // If we already have responses, use the next attempt number
+      finalAttemptNumber = existingResponses[0].attempt_number + 1;
+    } else if (!attemptNumber || attemptNumber === 1) {
+      // First attempt
+      finalAttemptNumber = 1;
     }
 
     // Determine if AI evaluation is needed
@@ -159,22 +178,43 @@ export async function POST(
       time_spent: timeSpent,
       answered_at: new Date().toISOString(),
       evaluation_status: finalEvaluationStatus,
+      attempt_number: finalAttemptNumber,
+      is_retry_round: isRetryRound,
     };
 
-    // Upsert the response (overwrite if exists, insert if new)
-    const { data: savedResponse, error: upsertError } = await supabase
-      .from("question_responses")
-      .upsert(responseData, {
-        onConflict: "attempt_id,question_id",
-        ignoreDuplicates: false
-      })
-      .select()
-      .single();
+    // Use upsert for first attempt (attempt_number = 1), insert for retries
+    let savedResponse;
+    let saveError;
 
-    if (upsertError) {
-      console.error("Failed to save answer:", upsertError);
+    if (finalAttemptNumber === 1 && !isRetryRound) {
+      // First attempt in normal mode - use upsert to handle navigation/resume cases
+      const { data, error } = await supabase
+        .from("question_responses")
+        .upsert(responseData, {
+          onConflict: "attempt_id,question_id,attempt_number",
+          ignoreDuplicates: false
+        })
+        .select()
+        .single();
+
+      savedResponse = data;
+      saveError = error;
+    } else {
+      // Retry attempts - always insert new row
+      const { data, error } = await supabase
+        .from("question_responses")
+        .insert(responseData)
+        .select()
+        .single();
+
+      savedResponse = data;
+      saveError = error;
+    }
+
+    if (saveError) {
+      console.error("Failed to save answer:", saveError);
       return NextResponse.json(
-        { error: "Failed to save answer", details: upsertError.message },
+        { error: "Failed to save answer", details: saveError.message },
         { status: 500 }
       );
     }

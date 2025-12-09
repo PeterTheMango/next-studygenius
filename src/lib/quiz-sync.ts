@@ -14,6 +14,8 @@ export interface QuizResponse {
   timeSpent: number;
   timestamp: number; // When it was created locally
   evaluationStatus: 'pending' | 'evaluated' | 'failed'; // Track evaluation state
+  attemptNumber?: number; // Which attempt this is (1st, 2nd, 3rd, etc.)
+  isRetryRound?: boolean; // Whether this was during a retry round
 }
 
 export interface SavedResponse {
@@ -217,7 +219,7 @@ export async function saveResponseToServer(
 export async function saveResponse(
   quizId: string,
   response: QuizResponse
-): Promise<{ savedLocally: boolean; savedToServer: boolean; error?: string }> {
+): Promise<{ savedLocally: boolean; savedToServer: boolean; error?: string; data?: any }> {
   // 1. Save locally first (always succeeds)
   saveResponseLocally(response.attemptId, response);
 
@@ -237,6 +239,7 @@ export async function saveResponse(
   return {
     savedLocally: true,
     savedToServer: true,
+    data: result.data,
   };
 }
 

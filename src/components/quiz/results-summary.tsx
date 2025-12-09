@@ -23,7 +23,16 @@ interface QuizResultProps {
     correctAnswers: number;
     totalQuestions: number;
     timeSpent: number;
-    answers: Record<string, { userAnswer: string; isCorrect: boolean; score?: number }>;
+    answers: Record<string, {
+      userAnswer: string;
+      isCorrect: boolean;
+      score?: number;
+      attemptNumber?: number;
+      totalAttempts?: number;
+      hasRetries?: boolean;
+      firstAttemptCorrect?: boolean;
+      allAttempts?: any[];
+    }>;
   };
 }
 
@@ -69,6 +78,12 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
   if (attempt.totalQuestions === 0) {
     data[1].value = 1; // dummy value
   }
+
+  // Calculate retry statistics
+  const questionsWithRetries = Object.values(attempt.answers).filter(a => a.hasRetries).length;
+  const questionsImprovedInRetry = Object.values(attempt.answers).filter(
+    a => a.hasRetries && !a.firstAttemptCorrect && a.isCorrect
+  ).length;
 
   const onRetry = () => {
     router.push(`/quizzes/${quiz.id}`);
@@ -134,6 +149,26 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                     </h3>
                 </div>
             </div>
+
+            {/* Retry Statistics Card */}
+            {questionsWithRetries > 0 && (
+              <div className="col-span-2 bg-purple-50 p-6 rounded-2xl border border-purple-200 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-purple-600 font-medium mb-1">Retry Round Stats</p>
+                    <p className="text-xs text-purple-500">
+                      {questionsWithRetries} question{questionsWithRetries > 1 ? 's' : ''} practiced in retry round
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <h3 className="text-3xl font-bold text-purple-600">
+                      {questionsImprovedInRetry}
+                    </h3>
+                    <p className="text-xs text-purple-500">mastered</p>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="col-span-2 flex gap-4 mt-2">
                 <button 
@@ -171,8 +206,20 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isCorrect ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                                 {isCorrect ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
                             </div>
-                            <div>
-                                <p className="font-medium text-slate-800">Question {idx + 1}</p>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-slate-800">Question {idx + 1}</p>
+                                  {answer?.hasRetries && (
+                                    <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-xs font-medium rounded">
+                                      {answer.firstAttemptCorrect ? 'Practice' : 'Mastered'}
+                                    </span>
+                                  )}
+                                  {answer?.totalAttempts && answer.totalAttempts > 1 && (
+                                    <span className="text-xs text-slate-400">
+                                      ({answer.totalAttempts} attempts)
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm text-slate-500 truncate max-w-lg">{q.questionText.replace(/___/g, '...')}</p>
                             </div>
                         </div>

@@ -60,6 +60,7 @@ export function QuestionCard({
   // -- Option Shuffling Logic --
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number>(-1);
+  const [shuffledToOriginalMap, setShuffledToOriginalMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     if ((question.type === 'multiple_choice' || question.type === 'true_false') && question.options) {
@@ -67,31 +68,83 @@ export function QuestionCard({
       if (optionSeed !== undefined) {
         const shuffled = shuffleOptions(question.options, optionSeed);
 
-        // Find which position the correct answer moved to
-        const correctOriginalLabel = question.correctAnswer;
-        const correctOptionIndex = shuffled.findIndex(opt =>
-          opt.charAt(0) === correctOriginalLabel || opt === correctOriginalLabel
-        );
-        setCorrectAnswerIndex(correctOptionIndex);
+        // Create mapping for answer values
+        const labelMap = new Map<string, string>();
 
-        // Renumber options to always show A, B, C, D in order
-        const renumbered = shuffled.map((option, index) => {
-          // Remove original letter prefix (e.g., "A) ", "B) ", etc.)
-          const textWithoutLabel = option.replace(/^[A-Z]\)\s*/, '');
-          // Add new letter prefix based on position
-          const newLabel = String.fromCharCode(65 + index); // 65 = 'A'
-          return `${newLabel}) ${textWithoutLabel}`;
-        });
+        if (question.type === 'true_false') {
+          // For true/false, map display labels (A, B) to actual values (True, False)
+          shuffled.forEach((option, index) => {
+            const displayLabel = String.fromCharCode(65 + index); // A, B
+            // Extract the actual value (True or False) from option
+            const actualValue = option.replace(/^[A-Z]\)\s*/, '') || option;
+            labelMap.set(displayLabel, actualValue);
+          });
 
-        setShuffledOptions(renumbered);
+          // Find correct answer index based on actual value
+          const correctOptionIndex = shuffled.findIndex(opt => {
+            const actualValue = opt.replace(/^[A-Z]\)\s*/, '') || opt;
+            return actualValue === question.correctAnswer;
+          });
+          setCorrectAnswerIndex(correctOptionIndex);
+
+          // Format options with A) and B) prefixes
+          const formatted = shuffled.map((option, index) => {
+            const newLabel = String.fromCharCode(65 + index);
+            const textWithoutLabel = option.replace(/^[A-Z]\)\s*/, '');
+            return `${newLabel}) ${textWithoutLabel}`;
+          });
+
+          setShuffledOptions(formatted);
+          setShuffledToOriginalMap(labelMap);
+        } else {
+          // Multiple choice: map display labels to original labels
+          const correctOriginalLabel = question.correctAnswer;
+          const correctOptionIndex = shuffled.findIndex(opt =>
+            opt.charAt(0) === correctOriginalLabel || opt === correctOriginalLabel
+          );
+          setCorrectAnswerIndex(correctOptionIndex);
+
+          // Renumber options to always show A, B, C, D in order
+          const renumbered = shuffled.map((option, index) => {
+            const originalLabel = option.charAt(0);
+            const newLabel = String.fromCharCode(65 + index);
+            labelMap.set(newLabel, originalLabel);
+            const textWithoutLabel = option.replace(/^[A-Z]\)\s*/, '');
+            return `${newLabel}) ${textWithoutLabel}`;
+          });
+
+          setShuffledOptions(renumbered);
+          setShuffledToOriginalMap(labelMap);
+        }
       } else {
         // Fallback to original order if no seed provided
-        setShuffledOptions(question.options);
-        // Find correct answer index in original order
-        const correctIndex = question.options?.findIndex(opt =>
-          opt.charAt(0) === question.correctAnswer || opt === question.correctAnswer
-        ) ?? -1;
-        setCorrectAnswerIndex(correctIndex);
+        if (question.type === 'true_false') {
+          // Create mapping for true/false without shuffling
+          const labelMap = new Map<string, string>();
+          question.options.forEach((option, index) => {
+            const displayLabel = String.fromCharCode(65 + index);
+            const actualValue = option.replace(/^[A-Z]\)\s*/, '') || option;
+            labelMap.set(displayLabel, actualValue);
+          });
+          setShuffledToOriginalMap(labelMap);
+
+          // Find correct answer
+          const correctIndex = question.options?.findIndex(opt => {
+            const actualValue = opt.replace(/^[A-Z]\)\s*/, '') || opt;
+            return actualValue === question.correctAnswer;
+          }) ?? -1;
+          setCorrectAnswerIndex(correctIndex);
+
+          setShuffledOptions(question.options);
+        } else {
+          // Multiple choice without shuffling
+          setShuffledOptions(question.options);
+          const correctIndex = question.options?.findIndex(opt =>
+            opt.charAt(0) === question.correctAnswer || opt === question.correctAnswer
+          ) ?? -1;
+          setCorrectAnswerIndex(correctIndex);
+          setShuffledToOriginalMap(new Map());
+        }
       }
     }
   }, [question.id, question.options, optionSeed, question.type, question.correctAnswer]);
@@ -206,7 +259,10 @@ export function QuestionCard({
         shuffledOptions.length > 0 && (
           <div className="space-y-3">
             {shuffledOptions.map((option, index) => {
-                const isSelected = selectedAnswer === option.charAt(0) || selectedAnswer === option;
+                const newLabel = option.charAt(0);
+                const originalLabel = shuffledToOriginalMap.get(newLabel) || newLabel;
+                // Check if selected answer matches either the original label or the full option text
+                const isSelected = selectedAnswer === originalLabel || selectedAnswer === option;
                 const isCorrectOption = index === correctAnswerIndex;
 
                 // Determine styling based on feedback
@@ -235,7 +291,13 @@ export function QuestionCard({
                         name="answer"
                         value={option.charAt(0)} // Use the new label (A, B, C, D)
                         checked={isSelected}
-                        onChange={() => onSelectAnswer(question.type === 'multiple_choice' ? option.charAt(0) : option)}
+                        onChange={() => {
+                          const newLabel = option.charAt(0);
+                          // Map shuffled label back to original label
+                          const originalLabel = shuffledToOriginalMap.get(newLabel) || newLabel;
+                          // Both multiple_choice and true_false should use original label
+                          onSelectAnswer(originalLabel);
+                        }}
                         disabled={disabled}
                         className="w-4 h-4 text-primary"
                         />
@@ -317,15 +379,21 @@ export function QuestionCard({
       )}
 
       {/* Matching */}
-      {question.type === "matching" && (
+      {question.type === "matching" && (() => {
+          // Filter out duplicate left items to handle AI-generated bad questions
+          const uniquePairs = question.matchingPairs?.filter((pair, index, self) =>
+            index === self.findIndex((p) => p.left === pair.left)
+          ) || [];
+
+          return (
           <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                   <h4 className="font-semibold text-xs text-muted-foreground uppercase">Items</h4>
-                  {question.matchingPairs?.map(pair => {
+                  {uniquePairs.map((pair, index) => {
                       const currentMatch = matchingState.find(m => m.left === pair.left)?.right;
                       return (
-                      <div 
-                        key={pair.left} 
+                      <div
+                        key={`left-${index}-${pair.left}`}
                         onClick={() => handleMatchClick('left', pair.left)}
                         className={`p-3 border rounded-lg cursor-pointer ${activeLeft === pair.left ? 'border-primary bg-primary/5' : ''} ${currentMatch ? 'border-blue-200 bg-blue-50' : ''}`}
                       >
@@ -340,14 +408,13 @@ export function QuestionCard({
               </div>
               <div className="space-y-2">
                   <h4 className="font-semibold text-xs text-muted-foreground uppercase">Matches</h4>
-                  {/* Show right items shuffled or list? Let's show the unique right items from the question definition */}
-                  {/* Ideally we should shuffle these once. For now simply mapping them */}
-                  {question.matchingPairs?.map(pair => pair.right).sort().map(rightVal => {
+                  {/* Show unique right items from the question definition */}
+                  {Array.from(new Set(question.matchingPairs?.map(pair => pair.right) || [])).sort().map((rightVal, index) => {
                       // is this value matched?
                       const isMatched = matchingState.some(m => m.right === rightVal);
                       return (
-                        <div 
-                            key={rightVal}
+                        <div
+                            key={`right-${index}-${rightVal}`}
                             onClick={() => handleMatchClick('right', rightVal)}
                             className={`p-3 border rounded-lg cursor-pointer ${isMatched ? 'opacity-50' : ''}`}
                         >
@@ -358,11 +425,12 @@ export function QuestionCard({
               </div>
               {showFeedback && (
                    <div className="col-span-2 text-sm text-green-700 font-medium mt-2 bg-green-50 p-2 rounded">
-                       Pairs: {question.matchingPairs?.map(p => `${p.left} -> ${p.right}`).join(', ')}
+                       Pairs: {uniquePairs.map(p => `${p.left} -> ${p.right}`).join(', ')}
                    </div>
                )}
           </div>
-      )}
+      );
+      })()}
 
       {showHint && question.hint && (
         <div className="mt-4">

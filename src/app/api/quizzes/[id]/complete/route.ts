@@ -77,13 +77,39 @@ export async function POST(
     // Only count evaluated responses for score calculation
     const { data: allResponses } = await supabase
       .from("question_responses")
-      .select("is_correct, evaluation_status")
+      .select("question_id, is_correct, evaluation_status, attempt_number")
       .eq("attempt_id", attemptId);
 
-    // Only count evaluated responses as correct
-    // Pending evaluations are not counted as correct or incorrect yet
-    const evaluatedResponses = allResponses?.filter((r) => r.evaluation_status === 'evaluated') || [];
-    const correctCount = evaluatedResponses.filter((r) => r.is_correct).length || 0;
+    // Group responses by question_id to handle retries correctly
+    const responsesByQuestion = (allResponses || []).reduce((acc: Record<string, any[]>, response) => {
+      if (!acc[response.question_id]) {
+        acc[response.question_id] = [];
+      }
+      acc[response.question_id].push(response);
+      return acc;
+    }, {});
+
+    // Count correct answers using retry scoring rules:
+    // - First attempt correct = 1 point
+    // - First attempt incorrect, retry correct (mastered) = 1 point
+    // - First attempt correct, retry correct (practice) = 1 point (not double counted)
+    let correctCount = 0;
+    for (const questionId in responsesByQuestion) {
+      const questionResponses = responsesByQuestion[questionId];
+
+      // Sort by attempt_number to get chronological order
+      questionResponses.sort((a, b) => (a.attempt_number || 1) - (b.attempt_number || 1));
+
+      // Get first attempt and latest evaluated response
+      const firstAttempt = questionResponses[0];
+      const evaluatedResponses = questionResponses.filter(r => r.evaluation_status === 'evaluated');
+      const latestEvaluated = evaluatedResponses[evaluatedResponses.length - 1];
+
+      // Only count if we have an evaluated response
+      if (latestEvaluated && latestEvaluated.is_correct) {
+        correctCount++;
+      }
+    }
     const completedAt = new Date();
 
     // Calculate time_spent (completed_at - started_at in seconds)
@@ -93,7 +119,8 @@ export async function POST(
     // Calculate score based on evaluated responses only
     // If there are pending evaluations, the score will be partial
     const pendingCount = allResponses?.filter((r) => r.evaluation_status === 'pending').length || 0;
-    const scoreDecimal = evaluatedResponses.length > 0
+    const evaluatedCount = allResponses?.filter((r) => r.evaluation_status === 'evaluated').length || 0;
+    const scoreDecimal = evaluatedCount > 0
       ? correctCount / attempt.total_questions
       : 0; // If no responses evaluated yet, score is 0
 
