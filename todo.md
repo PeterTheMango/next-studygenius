@@ -1,59 +1,42 @@
-# Quiz Feature - TODO
+## Courses Feature
 
-## ✅ Completed Features
+Add new feature called Courses. This is where we can link documents to specific courses so that it makes it easier to only focus on materials related to that course.
 
-### 1. Retry Incorrect Questions in Learning Mode
+### Course Structure:
 
-**Status:** ✅ **IMPLEMENTED**
+**Course Pages:**
+- New Course - Create a new course with name and details
+- Search Courses - Search and filter through existing courses
+- List Courses - View all courses in a grid/list view
+- View Course (Individual Course Dashboard):
+  - Edit Course - Update course name and settings
+  - Choose Documents - Link documents to the course (with option: "Don't see the document? Upload it")
+  - View Documents - See all documents associated with this course
+  - View Quizzes - See all quizzes created from course documents
 
-**Implementation Summary:**
+### Course Dashboard Components:
 
-Successfully implemented a retry round feature for learning/revision modes with the following characteristics:
+**Top Section:**
+- Course selector dropdown (to switch between courses)
+- Course statistics cards:
+  - Average Quiz Score (with percentage and trophy icon)
+  - Course Files count (with book icon)
+  - Course Topics count (with document icon)
+  - Quizzes Created count (with document icon)
 
-- **Retry Timing:** At the end of quiz - users complete all questions first, then enter a retry round
-- **Retry Limit:** Unlimited attempts until mastery achieved
-- **Mastery Requirement:** 2 consecutive correct answers per question
-- **Scoring:** Retries count equally (no penalty for learning)
+**Tabs:**
+- Files tab - Show all documents linked to the course
+- Quizzes tab - Show all quizzes with:
+  - Filter/search bar
+  - "New Quiz" button
+  - Quiz table with columns: Name, Last Attempt (Mode/Progress/Date), Topics, File, Start button, Actions menu
 
-**Files Modified:**
-
-1. **Database Schema:**
-   - `supabase/migrations/20251209_add_retry_tracking_to_question_responses.sql`
-   - Added `attempt_number` and `is_retry_round` fields to track retry attempts
-
-2. **Core Logic:**
-   - `src/components/quiz/quiz-player.tsx` - Retry round state management, mastery tracking, question cycling
-   - `src/lib/quiz-sync.ts` - Updated QuizResponse interface with retry fields
-
-3. **API Endpoints:**
-   - `src/app/api/quizzes/[id]/answer/route.ts` - Handles multiple attempts per question
-
-4. **Results Display:**
-   - `src/app/(dashboard)/quizzes/[id]/results/page.tsx` - Fetches retry statistics
-   - `src/components/quiz/results-summary.tsx` - Displays retry stats and mastered questions
-
-**Features:**
-
-- ✅ Automatic retry round after completing all questions in learn/revision mode
-- ✅ Visual mastery progress tracker showing consecutive correct answers (0/2, 1/2, 2/2)
-- ✅ Purple-themed retry round banner with real-time progress indicators
-- ✅ Intelligent question cycling - reshuffles questions needing practice
-- ✅ Confetti celebration when achieving mastery
-- ✅ Results page shows:
-  - Total questions practiced in retry round
-  - Number of questions mastered
-  - Individual attempt counts per question
-  - "Mastered" badges for questions improved through retries
-
-**User Experience:**
-
-- Toast notifications guide users through retry process
-- Clear feedback on mastery progress ("One more time to master!")
-- Automatic completion when all questions achieve mastery (2 consecutive correct)
-- No penalty for retries - encourages learning through practice
-
----
-
-## No Outstanding Features
-
-All planned quiz features have been successfully implemented! 🎉
+**Quiz List Features:**
+- Display quiz name (e.g., "Cardiovascular quiz 1")
+- Show quiz mode (REVISION, LEARN, etc.)
+- Progress bar visualization
+- Attempt history with dates
+- Related topics display (with "+X more" expansion)
+- Associated file reference
+- Resume/Start buttons
+- Actions menu for each quiz

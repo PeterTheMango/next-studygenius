@@ -225,8 +225,10 @@ export function QuizPlayer({
         return String(answer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase();
     }
 
-    // Multiple choice / True False
-    return String(answer).toLowerCase() === String(question.correctAnswer).toLowerCase();
+    // Multiple choice / True False - compare the letters directly
+    // Both answer and correctAnswer are original option letters (A, B, C, D)
+    // The question-card component already maps shuffled letters back to original letters
+    return String(answer).toUpperCase() === String(question.correctAnswer).toUpperCase();
   };
 
   const handleSubmitAnswer = async () => {
@@ -738,14 +740,39 @@ export function QuizPlayer({
 
     const timeSpent = Math.round((Date.now() - questionStartTime) / 1000);
 
-    // Save without evaluation (evaluation happens on final submission)
+    let isCorrect: boolean | null = false;
+    let score: number | null = 0;
+    let evaluationStatus: 'pending' | 'evaluated' | 'failed' = 'evaluated';
+
+    // Check if this is a written answer that needs AI evaluation
+    if (currentQuestion.type === 'short_answer' || currentQuestion.type === 'fill_blank') {
+      // 1. Try strict match first
+      const strictMatch = String(selectedAnswer).trim().toLowerCase() === String(currentQuestion.correctAnswer).trim().toLowerCase();
+
+      if (strictMatch) {
+        isCorrect = true;
+        score = 100;
+        evaluationStatus = 'evaluated';
+      } else {
+        // 2. Mark as pending for background AI evaluation
+        isCorrect = null;
+        score = null;
+        evaluationStatus = 'pending';
+      }
+    } else {
+      // Simple questions can be evaluated client-side immediately
+      isCorrect = checkAnswer(currentQuestion, selectedAnswer);
+      score = isCorrect ? 100 : 0;
+      evaluationStatus = 'evaluated';
+    }
+
     const newResponse: Response = {
       questionId: currentQuestion.id,
       answer: selectedAnswer,
-      isCorrect: false, // Placeholder, will be evaluated on submission
-      score: 0, // Placeholder
+      isCorrect: isCorrect,
+      score: score,
       timeSpent,
-      evaluationStatus: 'evaluated' // Placeholder for test mode
+      evaluationStatus
     };
 
     // Update state
@@ -758,20 +785,38 @@ export function QuizPlayer({
       attemptId,
       questionId: currentQuestion.id,
       answer: selectedAnswer,
-      isCorrect: false, // Placeholder
-      score: 0, // Placeholder
+      isCorrect: isCorrect,
+      score: score,
       timeSpent,
       timestamp: Date.now(),
-      evaluationStatus: 'evaluated', // Placeholder for test mode
+      evaluationStatus,
     };
 
     const saveResult = await saveResponse(quizId, quizResponse);
 
     if (!saveResult.savedToServer) {
       if (!navigator.onLine) {
-        toast.info("Answer saved offline", { duration: 2000 });
+        if (evaluationStatus === 'pending') {
+          toast.info("Answer saved offline. Will be evaluated when online.", { duration: 2000 });
+        } else {
+          toast.info("Answer saved offline", { duration: 2000 });
+        }
       }
       setPendingSaveCount(getPendingSaveCount(attemptId));
+      setPendingEvaluationCount(getPendingEvaluationCount(attemptId));
+    } else if (saveResult.data?.evaluationStatus === 'evaluated' && evaluationStatus === 'pending') {
+      // Evaluation completed during sync, update local state
+      const serverData = saveResult.data;
+      newResponse.isCorrect = serverData.isCorrect;
+      newResponse.score = serverData.score;
+      newResponse.evaluationStatus = serverData.evaluationStatus;
+
+      // Update responses map with evaluated result
+      const updatedMap = new Map(newResponsesMap);
+      updatedMap.set(currentQuestion.id, newResponse);
+      setResponses(updatedMap);
+    } else if (evaluationStatus === 'pending') {
+      // Answer saved but evaluation is pending
       setPendingEvaluationCount(getPendingEvaluationCount(attemptId));
     }
 

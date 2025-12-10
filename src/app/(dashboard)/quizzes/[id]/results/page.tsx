@@ -50,6 +50,7 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
     .from('quizzes')
     .select(`
       title,
+      mode,
       questions (
         id,
         question_text,
@@ -133,6 +134,7 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
         quiz={{
           id: id,
           title: quiz.title,
+          mode: quiz.mode,
           questions: sortedQuestions.map((q: any) => ({
             id: q.id,
             questionText: q.question_text,

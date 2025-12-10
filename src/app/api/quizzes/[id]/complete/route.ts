@@ -125,7 +125,7 @@ export async function POST(
       : 0; // If no responses evaluated yet, score is 0
 
     // Update attempt status and score
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from("quiz_attempts")
       .update({
         status: "completed",
@@ -134,11 +134,15 @@ export async function POST(
         time_spent: timeSpentSeconds,
         score: scoreDecimal,
       })
-      .eq("id", attemptId);
+      .eq("id", attemptId)
+      .select();
 
     if (updateError) {
        console.error("Attempt update error:", updateError);
-       // We don't fail here because responses are saved
+       return NextResponse.json(
+         { error: "Failed to update quiz status", details: updateError.message },
+         { status: 500 }
+       );
     }
 
     return NextResponse.json({

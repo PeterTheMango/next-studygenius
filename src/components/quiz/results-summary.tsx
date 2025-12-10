@@ -9,6 +9,7 @@ interface QuizResultProps {
   quiz: {
     id: string;
     title: string;
+    mode: 'learn' | 'revision' | 'test';
     questions: {
       id: string;
       questionText: string;
@@ -150,8 +151,8 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                 </div>
             </div>
 
-            {/* Retry Statistics Card */}
-            {questionsWithRetries > 0 && (
+            {/* Retry Statistics Card - Only show for learn mode */}
+            {quiz.mode === 'learn' && questionsWithRetries > 0 && (
               <div className="col-span-2 bg-purple-50 p-6 rounded-2xl border border-purple-200 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
@@ -209,12 +210,13 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                   <p className="font-medium text-slate-800">Question {idx + 1}</p>
-                                  {answer?.hasRetries && (
+                                  {/* Only show retry badges for learn mode */}
+                                  {quiz.mode === 'learn' && answer?.hasRetries && (
                                     <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-xs font-medium rounded">
                                       {answer.firstAttemptCorrect ? 'Practice' : 'Mastered'}
                                     </span>
                                   )}
-                                  {answer?.totalAttempts && answer.totalAttempts > 1 && (
+                                  {quiz.mode === 'learn' && answer?.totalAttempts && answer.totalAttempts > 1 && (
                                     <span className="text-xs text-slate-400">
                                       ({answer.totalAttempts} attempts)
                                     </span>
