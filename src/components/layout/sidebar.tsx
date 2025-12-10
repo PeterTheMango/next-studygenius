@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
+  BookOpen,
   GraduationCap,
   Brain,
   LogOut,
@@ -47,6 +48,12 @@ export function Sidebar({ className, user }: SidebarProps) {
       icon: FileText,
       href: "/documents",
       active: pathname.startsWith("/documents"),
+    },
+    {
+      label: "Courses",
+      icon: BookOpen,
+      href: "/courses",
+      active: pathname.startsWith("/courses"),
     },
     {
       label: "Quizzes",

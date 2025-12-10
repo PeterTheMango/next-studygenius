@@ -38,6 +38,44 @@ export interface Database {
           updated_at?: string | null
         }
       }
+      courses: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          course_code: string
+          color: string
+          icon: string
+          status: 'active' | 'archived'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          course_code: string
+          color?: string
+          icon?: string
+          status?: 'active' | 'archived'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          course_code?: string
+          color?: string
+          icon?: string
+          status?: 'active' | 'archived'
+          created_at?: string
+          updated_at?: string
+        }
+      }
       documents: {
         Row: {
           id: string
@@ -53,6 +91,7 @@ export interface Database {
           filtered_page_count: number | null
           original_page_count: number | null
           error_message: string | null
+          course_id: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -70,6 +109,7 @@ export interface Database {
           filtered_page_count?: number | null
           original_page_count?: number | null
           error_message?: string | null
+          course_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -87,6 +127,7 @@ export interface Database {
           filtered_page_count?: number | null
           original_page_count?: number | null
           error_message?: string | null
+          course_id?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
