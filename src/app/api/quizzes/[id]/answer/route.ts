@@ -36,12 +36,34 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { attemptId, questionId, answer, isCorrect, score, timeSpent, evaluationStatus = 'evaluated', attemptNumber = 1, isRetryRound = false } = await request.json();
+    const data = await request.json();
+
+    const {
+      attemptId,
+      questionId,
+      answer,
+      isCorrect,
+      score,
+      timeSpent,
+      evaluationStatus = "evaluated",
+      attemptNumber = 1,
+      isRetryRound = false,
+    } = data;
+
+    console.log("Received answer data:", data);
 
     // Validate required fields
-    if (!attemptId || !questionId || answer === undefined || timeSpent === undefined) {
+    if (
+      !attemptId ||
+      !questionId ||
+      answer === undefined ||
+      timeSpent === undefined
+    ) {
       return NextResponse.json(
-        { error: "Missing required fields: attemptId, questionId, answer, timeSpent" },
+        {
+          error:
+            "Missing required fields: attemptId, questionId, answer, timeSpent",
+        },
         { status: 400 }
       );
     }
@@ -104,8 +126,9 @@ export async function POST(
     }
 
     // Determine if AI evaluation is needed
-    const needsAIEvaluation = evaluationStatus === 'pending' &&
-                              (question.type === 'short_answer' || question.type === 'fill_blank');
+    const needsAIEvaluation =
+      evaluationStatus === "pending" &&
+      (question.type === "short_answer" || question.type === "fill_blank");
 
     let finalIsCorrect = isCorrect;
     let finalScore = score;
@@ -158,13 +181,13 @@ export async function POST(
 
         finalIsCorrect = result.result === "PASS";
         finalScore = result.score;
-        finalEvaluationStatus = 'evaluated';
+        finalEvaluationStatus = "evaluated";
       } catch (error) {
         console.error("AI evaluation failed:", error);
         // Keep as pending on evaluation failure
         finalIsCorrect = null;
         finalScore = null;
-        finalEvaluationStatus = 'failed';
+        finalEvaluationStatus = "failed";
       }
     }
 
@@ -172,7 +195,8 @@ export async function POST(
     const responseData = {
       attempt_id: attemptId,
       question_id: questionId,
-      user_answer: typeof answer === 'object' ? JSON.stringify(answer) : String(answer),
+      user_answer:
+        typeof answer === "object" ? JSON.stringify(answer) : String(answer),
       is_correct: finalIsCorrect,
       score: finalScore ?? null,
       time_spent: timeSpent,
@@ -192,7 +216,7 @@ export async function POST(
         .from("question_responses")
         .upsert(responseData, {
           onConflict: "attempt_id,question_id,attempt_number",
-          ignoreDuplicates: false
+          ignoreDuplicates: false,
         })
         .select()
         .single();
@@ -230,7 +254,6 @@ export async function POST(
         evaluationStatus: savedResponse.evaluation_status,
       },
     });
-
   } catch (error) {
     console.error("Save answer error:", error);
     return NextResponse.json(

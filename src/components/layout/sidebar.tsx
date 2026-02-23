@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Brain,
   LogOut,
+  Settings,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -60,6 +61,12 @@ export function Sidebar({ className, user }: SidebarProps) {
       icon: GraduationCap,
       href: "/quizzes",
       active: pathname.startsWith("/quizzes"),
+    },
+    {
+      label: "Settings",
+      icon: Settings,
+      href: "/settings",
+      active: pathname.startsWith("/settings"),
     },
   ];
 

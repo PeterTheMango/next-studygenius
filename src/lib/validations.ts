@@ -41,3 +41,28 @@ export const ConfirmActionSchema = z.object({
     message: "Please type 'confirm action' to proceed",
   }),
 });
+
+// Settings validation schemas
+export const UpdateProfileSchema = z.object({
+  fullName: z.string().min(2, "Name must be at least 2 characters").max(100, "Name must be less than 100 characters"),
+  email: z.string().email("Invalid email address"),
+});
+
+export const UpdatePreferencesSchema = z.object({
+  appearanceMode: z.enum(["light", "dark", "system"]),
+  themeColor: z.string().min(1, "Please select a theme color"),
+  themeCustomPrimary: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid hex color").optional().nullable(),
+  themeCustomSecondary: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid hex color").optional().nullable(),
+  themeCustomAccent: z.string().regex(/^#[0-9A-F]{6}$/i, "Invalid hex color").optional().nullable(),
+  fontFamily: z.string().min(1, "Please select a font family"),
+  fontSize: z.enum(["small", "medium", "large"]),
+});
+
+export const UploadAvatarSchema = z.object({
+  file: z.instanceof(File)
+    .refine((file) => file.size <= 2 * 1024 * 1024, "File size must be less than 2MB")
+    .refine(
+      (file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type),
+      "File must be a JPEG, PNG, or WebP image"
+    ),
+});

@@ -10,6 +10,8 @@ export function Navbar({ user }: { user: any }) {
     if (pathname === "/dashboard") return "Dashboard";
     if (pathname.startsWith("/documents")) return "Documents";
     if (pathname.startsWith("/quizzes")) return "Quizzes";
+    if (pathname.startsWith("/courses")) return "Courses";
+    if (pathname.startsWith("/settings")) return "Settings";
     return "StudyGenius";
   };
 
@@ -22,7 +24,7 @@ export function Navbar({ user }: { user: any }) {
         </h1>
       </div>
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="hidden md:flex items-center gap-2 text-sm text-slate-600">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
           StudyBuddy AI Active
         </div>

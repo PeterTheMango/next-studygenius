@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, X, Clock, Target, RotateCcw, LayoutDashboard, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, X, Clock, Target, RotateCcw, LayoutDashboard, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import confetti from 'canvas-confetti';
 
 interface QuizResultProps {
   quiz: {
@@ -41,6 +44,8 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
+  const [overridingQuestions, setOverridingQuestions] = useState<Set<string>>(new Set());
+  const [localAttempt, setLocalAttempt] = useState(attempt);
 
   // Retrieve and merge confidence scores from sessionStorage
   useEffect(() => {
@@ -50,11 +55,21 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
       if (scoresJson) {
         try {
           const scores = JSON.parse(scoresJson);
-          // Merge scores into attempt.answers
-          scores.forEach((item: any) => {
-            if (attempt.answers[item.questionId]) {
-              attempt.answers[item.questionId].score = item.score;
-            }
+          // Merge scores into localAttempt.answers
+          setLocalAttempt(prev => {
+            const newAnswers = { ...prev.answers };
+            scores.forEach((item: any) => {
+              if (newAnswers[item.questionId]) {
+                newAnswers[item.questionId] = {
+                  ...newAnswers[item.questionId],
+                  score: item.score
+                };
+              }
+            });
+            return {
+              ...prev,
+              answers: newAnswers
+            };
           });
           // Clean up sessionStorage
           sessionStorage.removeItem(`quiz-scores-${attemptId}`);
@@ -63,26 +78,26 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
         }
       }
     }
-  }, [searchParams, attempt.answers]);
+  }, [searchParams]);
 
   const toggleExpand = (id: string) => {
     setExpandedQuestion(expandedQuestion === id ? null : id);
   };
 
-  const percentage = Math.round(attempt.score);
+  const percentage = Math.round(localAttempt.score);
   const data = [
-    { name: 'Correct', value: attempt.correctAnswers, color: '#22c55e' },
-    { name: 'Incorrect', value: attempt.totalQuestions - attempt.correctAnswers, color: '#f87171' },
+    { name: 'Correct', value: localAttempt.correctAnswers, color: '#22c55e' },
+    { name: 'Incorrect', value: localAttempt.totalQuestions - localAttempt.correctAnswers, color: '#f87171' },
   ];
 
   // Handle empty data case for chart to avoid errors
-  if (attempt.totalQuestions === 0) {
+  if (localAttempt.totalQuestions === 0) {
     data[1].value = 1; // dummy value
   }
 
   // Calculate retry statistics
-  const questionsWithRetries = Object.values(attempt.answers).filter(a => a.hasRetries).length;
-  const questionsImprovedInRetry = Object.values(attempt.answers).filter(
+  const questionsWithRetries = Object.values(localAttempt.answers).filter(a => a.hasRetries).length;
+  const questionsImprovedInRetry = Object.values(localAttempt.answers).filter(
     a => a.hasRetries && !a.firstAttemptCorrect && a.isCorrect
   ).length;
 
@@ -92,6 +107,79 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
 
   const onDashboard = () => {
     router.push('/dashboard');
+  };
+
+  const handleOverrideAnswer = async (questionId: string) => {
+    const attemptId = searchParams.get('attempt');
+    if (!attemptId || overridingQuestions.has(questionId)) return;
+
+    const confirmOverride = confirm(
+      "Are you sure you want to mark this answer as correct? This will override the current evaluation and update your score."
+    );
+
+    if (!confirmOverride) return;
+
+    // Add to overriding set
+    setOverridingQuestions(prev => new Set(prev).add(questionId));
+
+    try {
+      const res = await fetch(`/api/quizzes/${quiz.id}/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attemptId,
+          questionId,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to override answer");
+      }
+
+      // Update local state to reflect the change
+      setLocalAttempt(prev => {
+        const newAnswers = { ...prev.answers };
+        if (newAnswers[questionId]) {
+          newAnswers[questionId] = {
+            ...newAnswers[questionId],
+            isCorrect: true,
+            score: 100,
+          };
+        }
+
+        // Recalculate correct answers count
+        const newCorrectCount = Object.values(newAnswers).filter(a => a.isCorrect).length;
+
+        return {
+          ...prev,
+          answers: newAnswers,
+          correctAnswers: newCorrectCount,
+          score: Math.round((newCorrectCount / prev.totalQuestions) * 100),
+        };
+      });
+
+      toast.success("Answer marked as correct! Your score has been updated.");
+
+      // Show confetti for the override
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+
+    } catch (error: any) {
+      console.error("Override error:", error);
+      toast.error(error.message || "Failed to override answer");
+    } finally {
+      // Remove from overriding set
+      setOverridingQuestions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(questionId);
+        return newSet;
+      });
+    }
   };
 
   return (
@@ -135,7 +223,7 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                 <div>
                     <p className="text-sm text-slate-500 font-medium">Time Taken</p>
                     <h3 className="text-2xl font-bold text-slate-800">
-                        {Math.floor(attempt.timeSpent / 60)}m {Math.round(attempt.timeSpent % 60)}s
+                        {Math.floor(localAttempt.timeSpent / 60)}m {Math.round(localAttempt.timeSpent % 60)}s
                     </h3>
                 </div>
             </div>
@@ -146,7 +234,7 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                 <div>
                     <p className="text-sm text-slate-500 font-medium">Accuracy</p>
                     <h3 className="text-2xl font-bold text-slate-800">
-                        {attempt.correctAnswers} / {attempt.totalQuestions}
+                        {localAttempt.correctAnswers} / {localAttempt.totalQuestions}
                     </h3>
                 </div>
             </div>
@@ -193,9 +281,10 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-slate-800">Detailed Review</h3>
         {quiz.questions.map((q, idx) => {
-            const answer = attempt.answers[q.id];
+            const answer = localAttempt.answers[q.id];
             const isCorrect = answer?.isCorrect;
             const isExpanded = expandedQuestion === q.id;
+            const isOverriding = overridingQuestions.has(q.id);
 
             return (
                 <div key={q.id} className={`bg-white rounded-xl border transition-all ${isCorrect ? 'border-slate-200' : 'border-red-200'}`}>
@@ -257,6 +346,22 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                                     <span className="font-bold block mb-1">Explanation:</span>
                                     {q.explanation}
                                 </div>
+
+                                {/* Override Button - Show only when answer is incorrect */}
+                                {!isCorrect && (
+                                  <div className="mt-4">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleOverrideAnswer(q.id)}
+                                      disabled={isOverriding}
+                                      className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                                    >
+                                      <AlertCircle className="w-4 h-4 mr-2" />
+                                      {isOverriding ? "Overriding..." : "Override: Mark Answer as Correct"}
+                                    </Button>
+                                  </div>
+                                )}
                             </div>
                         </div>
                     )}
