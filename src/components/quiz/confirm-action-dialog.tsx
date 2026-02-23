@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import {
   Dialog,
   DialogContent,
@@ -43,7 +42,7 @@ export function ConfirmActionDialog({
   onConfirm,
   isLoading,
 }: ConfirmActionDialogProps) {
-  const form = useForm<z.infer<typeof ConfirmActionSchema>>({
+  const form = useForm({
     resolver: zodResolver(ConfirmActionSchema),
     defaultValues: {
       confirmText: "",

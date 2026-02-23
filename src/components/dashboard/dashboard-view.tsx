@@ -169,7 +169,7 @@ export function DashboardView({ attempts }: DashboardViewProps) {
                   />
                   <Tooltip
                     cursor={{ stroke: "#3b82f6", strokeWidth: 1 }}
-                    formatter={(value: number) => [`${value}`, "Score (%)"]}
+                    formatter={(value: number | undefined) => [`${value ?? 0}`, "Score (%)"]}
                   />
                   <Line
                     type="monotone"
