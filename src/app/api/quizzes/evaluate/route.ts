@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { genAI, GEMINI_MODEL } from "@/lib/gemini/client";
+import { processDocument } from "@/lib/pipeline/process-document-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       You are an objective grading assistant. Your task is to evaluate how well the STUDENT ANSWER matches the meaning of the REFERENCE ANSWER. You must judge only semantic relevance, not wording, grammar, length, or examples.
 
       Your evaluation rules:
-      - Focus ONLY on whether the student’s answer expresses the same core ideas as the reference.
+      - Focus ONLY on whether the student's answer expresses the same core ideas as the reference.
       - Ignore stylistic differences, ordering, or level of detail.
       - Do NOT penalize paraphrasing or simplified wording.
       - Consider the answer correct if it conveys the essential meaning.
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
       STUDENT ANSWER:
       "${userAnswer}"
-      
+
       THRESHOLD:
       ${threshold}
 
@@ -46,13 +46,10 @@ export async function POST(req: NextRequest) {
       }
     `;
 
-    const response = await genAI.models.generateContent({
-      model: GEMINI_MODEL,
+    const response = await processDocument({
+      task: "answer_eval",
       contents: [{ text: prompt }],
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.1,
-      },
+      responseMimeType: "application/json",
     });
 
     let responseText = response.text || "{}";

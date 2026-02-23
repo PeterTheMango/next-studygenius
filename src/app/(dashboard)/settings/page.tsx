@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { PlatformSettings } from "@/components/settings/platform-settings";
 import { UserProfileSettings } from "@/components/settings/user-profile-settings";
+import { SettingsSectionNav } from "@/components/settings/settings-section-nav";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -17,7 +17,6 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  // Fetch user profile with preferences
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
@@ -30,28 +29,26 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-600 mt-2">
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
+        <p className="text-muted-foreground mt-2">
           Manage your account settings and preferences
         </p>
       </div>
 
-      <Tabs defaultValue="platform" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="platform">Platform</TabsTrigger>
-          <TabsTrigger value="profile">User Profile</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col md:flex-row gap-8">
+        <SettingsSectionNav />
 
-        <TabsContent value="platform" className="space-y-6">
-          <PlatformSettings profile={profile} />
-        </TabsContent>
-
-        <TabsContent value="profile" className="space-y-6">
+        {/* Main content */}
+        <div className="flex-1 min-w-0 space-y-10">
           <UserProfileSettings user={user} profile={profile} />
-        </TabsContent>
-      </Tabs>
+
+          <Separator />
+
+          <PlatformSettings profile={profile} />
+        </div>
+      </div>
     </div>
   );
 }

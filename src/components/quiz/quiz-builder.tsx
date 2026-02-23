@@ -14,7 +14,6 @@ interface QuizBuilderProps {
 export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStep, setLoadingStep] = useState("Reading Document");
   const [mode, setMode] = useState<QuizMode>('learn');
   const [difficulty, setDifficulty] = useState<'easy'|'medium'|'hard'|'mixed'>('mixed');
   const [title, setTitle] = useState('');
@@ -65,11 +64,6 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
 
   const handleStart = async () => {
     setIsLoading(true);
-    setLoadingStep("Reading Document");
-
-    // Simulate progress updates
-    const t1 = setTimeout(() => setLoadingStep("Generating Questions"), 2000);
-    const t2 = setTimeout(() => setLoadingStep("System Initialization"), 4500);
 
     try {
       const res = await fetch("/api/quizzes/generate", {
@@ -79,6 +73,7 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
           documentId,
           title: title || "New Quiz",
           mode,
+          idempotencyKey: crypto.randomUUID(),
           settings: {
             questionTypes: selectedTypes,
             difficulty,
@@ -88,24 +83,13 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
       });
 
       const data = await res.json();
-      
-      // Clear timers
-      clearTimeout(t1);
-      clearTimeout(t2);
 
       if (!res.ok) throw new Error(data.error);
 
-      setLoadingStep("DONE!");
-      toast.success("Quiz generated successfully!");
-
-      // Delay before redirect to show DONE state
-      setTimeout(() => {
-        router.push(`/quizzes/${data.quiz.id}`);
-      }, 1000);
+      // Redirect to generation progress page immediately
+      router.push(`/quizzes/${data.quizId}/generating`);
     } catch (error: any) {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      toast.error(error.message || "Failed to generate quiz");
+      toast.error(error.message || "Failed to start quiz generation");
       setIsLoading(false);
     }
   };
@@ -233,7 +217,7 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
           {isLoading ? (
             <span className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 animate-spin" />
-              {loadingStep}
+              Starting...
             </span>
           ) : (
             <span className="flex items-center gap-2">

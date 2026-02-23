@@ -1,4 +1,4 @@
-import { genAI, GEMINI_MODEL } from "../gemini/client";
+import { processDocument } from "../pipeline/process-document-service";
 import type { PageClassification } from "@/types/database";
 import type { ExtractedPage } from "./page-processor";
 
@@ -21,7 +21,7 @@ interface PageToClassify {
  * Classifies a single page using AI
  */
 export async function classifyPageWithAI(
-  pageData: PageToClassify
+  pageData: PageToClassify,
 ): Promise<AIClassificationResult> {
   const results = await classifyPagesWithAI([pageData]);
   return results[0];
@@ -32,7 +32,9 @@ export async function classifyPageWithAI(
  * More cost-effective than individual requests
  */
 export async function classifyPagesWithAI(
-  pagesData: PageToClassify[]
+  pagesData: PageToClassify[],
+  documentId?: string,
+  userId?: string,
 ): Promise<AIClassificationResult[]> {
   if (pagesData.length === 0) {
     return [];
@@ -42,17 +44,15 @@ export async function classifyPagesWithAI(
   const prompt = buildBatchClassificationPrompt(pagesData);
 
   try {
-    const response = await genAI.models.generateContent({
-      model: GEMINI_MODEL, // Fast and cost-effective model
+    const response = await processDocument({
+      task: "page_classify",
       contents: [{ text: prompt }],
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.1, // Low temperature for consistent classification
-      },
+      responseMimeType: "application/json",
+      documentId,
+      userId,
     });
 
     const responseText = response.text || "[]";
-
     const parsed = JSON.parse(responseText);
 
     // Validate and return results
@@ -73,71 +73,50 @@ export async function classifyPagesWithAI(
  * Builds the prompt for batch page classification
  */
 function buildBatchClassificationPrompt(pagesData: PageToClassify[]): string {
-  const categoryDescriptions = `
-CATEGORIES:
-- content: Main educational/learning content (lectures, explanations, examples, detailed information)
-- cover: Title page, cover page, or syllabus header with minimal content
-- toc: Table of contents or index
-- outline: Course outline, schedule, or agenda
-- objectives: Learning objectives, learning outcomes, or learning goals
-- review: Summary, recap, "what we learned" sections, or conclusion pages
-- quiz: Quiz questions, test questions, exam questions, or practice problems
-- blank: Empty or nearly empty pages
-- unknown: Unable to determine with confidence
+  let prompt = `Classify each document page into exactly one category.
+
+<categories>
+- content: Main educational/learning material — lectures, explanations, examples, detailed information, diagrams with explanations
+- cover: Title/cover page or syllabus header — typically has course name, instructor, date, institution, with minimal body text
+- toc: Table of contents or index — section/chapter listings with corresponding page numbers
+- outline: Course outline, schedule, weekly agenda, or syllabus body with dates and topic listings
+- objectives: Learning objectives/outcomes/goals — typically bullet points with action verbs (understand, explain, describe, analyze)
+- review: Summary, recap, conclusion, or "what we learned" — references previously covered material
+- quiz: Assessment material — numbered questions, answer choices, practice problems, exam content
+- blank: Empty or nearly empty pages (minimal meaningful content)
+- unknown: Cannot determine with reasonable confidence
+</categories>
+
+<rules>
+1. Default to "content" when uncertain — it is the most common category.
+2. Use page position as a signal, not a rule: covers tend to appear early, reviews tend to appear late, but exceptions exist.
+3. A page with a title AND substantial educational material below it is "content", not "cover".
+4. Distinguish "outline" (schedule/agenda with dates or week numbers) from "toc" (section listings with page numbers).
+5. Objectives pages state what students *will* learn; review pages summarize what *was* learned.
+6. Pages with only headers, footers, or page numbers and no meaningful body text are "blank".
+7. If a page mixes categories (e.g., objectives followed by content), classify by the dominant purpose.
+</rules>
+
+<pages>
 `;
 
-  let prompt = `You are a document page classifier. Analyze the following pages and classify each one into the appropriate category.
-
-${categoryDescriptions}
-
-CLASSIFICATION RULES:
-1. Be conservative - when in doubt, classify as 'content'
-2. Cover pages typically have minimal text and metadata (author, date, course info)
-3. ToC pages have page numbers and section listings
-4. Quiz pages have numbered questions with answer options
-5. Objectives pages have bullet points with action verbs (understand, explain, describe)
-6. Review pages summarize previously covered material
-7. Content pages contain substantial educational material, explanations, or examples
-
-`;
-
-  // Add each page to classify
   pagesData.forEach(({ page, context }, index) => {
     const position = getPositionLabel(context.pageNumber, context.totalPages);
-
     const contentPreview =
       page.content.length > 800
         ? page.content.substring(0, 800) + "..."
         : page.content;
 
-    prompt += `
-PAGE ${index + 1} TO CLASSIFY:
-- Document Page Number: ${context.pageNumber} of ${context.totalPages}
-- Position: ${position}
-- Character Count: ${page.characterCount}
-- Content:
-"""
+    prompt += `<page index="${index + 1}" page_number="${context.pageNumber}" total_pages="${context.totalPages}" position="${position}" char_count="${page.characterCount}">
 ${contentPreview}
-"""
-
----
+</page>
 `;
   });
 
-  prompt += `
-Return a JSON array with exactly ${pagesData.length} classification results, one for each page in order.
+  prompt += `</pages>
 
-Format:
-[
-  {
-    "classification": "category_name",
-    "confidence": 0.0-1.0,
-    "reasoning": "Brief explanation"
-  },
-  ...
-]
-
-Provide the classifications now:`;
+Respond with a JSON array of exactly ${pagesData.length} objects, one per page in order:
+[{"classification": "<category>", "confidence": <0.0-1.0>, "reasoning": "<one sentence>"}]`;
 
   return prompt;
 }
@@ -160,7 +139,7 @@ function getPositionLabel(pageNumber: number, totalPages: number): string {
  */
 function validateAIResults(
   results: any,
-  expectedCount: number
+  expectedCount: number,
 ): AIClassificationResult[] {
   if (!Array.isArray(results)) {
     throw new Error("AI response is not an array");
@@ -168,7 +147,7 @@ function validateAIResults(
 
   if (results.length !== expectedCount) {
     console.warn(
-      `AI returned ${results.length} results, expected ${expectedCount}`
+      `AI returned ${results.length} results, expected ${expectedCount}`,
     );
   }
 
@@ -184,7 +163,7 @@ function validateAIResults(
     "unknown",
   ];
 
-  return results.map((result, index) => {
+  return results.map((result: any) => {
     // Validate classification
     const classification = validClassifications.includes(result.classification)
       ? result.classification

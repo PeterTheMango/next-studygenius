@@ -1,103 +1,124 @@
-export const SYSTEM_PROMPT = `You are an expert educational content creator specializing in quiz generation.
+export const SYSTEM_PROMPT = `You are an expert educational content creator. Generate quiz questions strictly from the provided document content.
 
-CRITICAL RULES - YOU MUST FOLLOW THESE EXACTLY:
-1. Generate questions ONLY from the provided document content
-2. Do NOT use any external knowledge, web sources, or your training data
-3. Do NOT make assumptions beyond what's explicitly stated in the document
-4. Every question MUST be directly answerable from the document text
-5. Include exact page/section references when possible
-6. If the document lacks sufficient content for a topic, skip that topic
-
-You will receive the document content and must generate questions based SOLELY on that content.`;
+<constraints>
+- Every question MUST be directly answerable from the document text. Do not use external knowledge.
+- Do not fabricate facts, infer beyond what is explicitly stated, or assume context not present in the document.
+- If a topic lacks sufficient content for a quality question, skip it rather than generating a weak question.
+- Reference the source page or section for each question when identifiable.
+</constraints>`;
 
 export const MODE_INSTRUCTIONS = {
-  learn: `
-LEARN MODE - Help users understand concepts for the first time:
-- Include explanatory context with each question
-- Focus on foundational concepts and definitions
-- Provide helpful hints for difficult questions
-- Use simpler question formats (multiple choice, true/false preferred)
-- Include "why" and "how" questions for deeper understanding
-- Explanations should teach, not just confirm
-- Difficulty distribution: 50% easy, 35% medium, 15% hard`,
+  learn: `<mode name="learn">
+Purpose: Help users understand concepts for the first time.
+- Provide explanatory context and hints with each question.
+- Prioritize foundational concepts, definitions, and core relationships.
+- Prefer simpler formats: multiple choice and true/false.
+- Include "why" and "how" questions to build understanding.
+- Explanations should teach the concept, not just confirm the answer.
+- Difficulty distribution: 50% easy, 35% medium, 15% hard.
+</mode>`,
 
-  revision: `
-REVISION MODE - Test memory through active recall:
-- No hints provided - pure recall testing
-- Mix all question types to challenge different recall patterns
-- Include questions that connect multiple concepts
-- Focus on key facts, definitions, formulas, and relationships
-- Vary difficulty to identify weak areas
-- Difficulty distribution: 30% easy, 45% medium, 25% hard`,
+  revision: `<mode name="revision">
+Purpose: Test retention through active recall.
+- No hints. Pure recall testing.
+- Mix all question types to challenge different recall patterns.
+- Include questions that connect multiple concepts from the document.
+- Focus on key facts, definitions, formulas, and relationships.
+- Vary difficulty to surface weak areas.
+- Difficulty distribution: 30% easy, 45% medium, 25% hard.
+</mode>`,
 
-  test: `
-TEST MODE - Simulate exam conditions:
-- No hints or context provided
-- Include application-based and analysis questions
-- Mix difficulty levels realistically
-- Questions should be time-appropriate (30-90 seconds each)
-- Test critical thinking, not just memorization
-- Difficulty distribution: 20% easy, 50% medium, 30% hard`,
+  test: `<mode name="test">
+Purpose: Simulate realistic exam conditions.
+- No hints or contextual scaffolding.
+- Emphasize application, analysis, and critical thinking over memorization.
+- Each question should be answerable in 30–90 seconds.
+- Mix difficulty levels to mirror real exam distribution.
+- Difficulty distribution: 20% easy, 50% medium, 30% hard.
+</mode>`,
 };
 
-export const OUTPUT_FORMAT = `
-OUTPUT FORMAT - Return ONLY valid JSON matching this exact structure:
+const DIFFICULTY_OVERRIDES: Record<string, { easy: number; medium: number; hard: number }> = {
+  easy: { easy: 60, medium: 30, hard: 10 },
+  hard: { easy: 10, medium: 30, hard: 60 },
+};
+
+export const OUTPUT_FORMAT = `<output_format>
+Return ONLY a valid JSON object. No markdown fences, no commentary, no preamble.
+
 {
   "questions": [
     {
-      "type": "multiple_choice" | "true_false" | "fill_blank" | "short_answer" | "matching" | "ordering",
-      "topic": "Topic name extracted from document",
-      "difficulty": "easy" | "medium" | "hard",
-      "questionText": "The question text",
-      "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
-      "correctAnswer": "The correct answer string",
-      "explanation": "Why this answer is correct, referencing the document",
-      "hint": "Optional hint for learn mode",
-      "sourceReference": "Page X or Section Y where this information appears",
+      "type": "multiple_choice | true_false | fill_blank | short_answer | matching | ordering",
+      "topic": "Topic name from the document",
+      "difficulty": "easy | medium | hard",
+      "questionText": "The question",
+      "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+      "correctAnswer": "The correct answer",
+      "explanation": "Why this is correct, referencing the document",
+      "hint": "Optional — learn mode only, omit otherwise",
+      "sourceReference": "Page X or Section Y",
       "timeEstimate": 30,
-      "matchingPairs": [ {"left": "Item 1", "right": "Match 1"}, ... ],
-      "orderingItems": [ "First Step", "Second Step", ... ]
+      "matchingPairs": [{"left": "Term", "right": "Definition"}],
+      "orderingItems": ["Step 1", "Step 2", "Step 3"]
     }
   ]
 }
 
-QUESTION TYPE RULES:
-- multiple_choice: Always provide exactly 4 options labeled A, B, C, D. correctAnswer should be the letter (e.g. "A").
-- true_false: options should be ["True", "False"]. correctAnswer should be "True" or "False".
-- fill_blank: questionText should contain "___" for the blank. correctAnswer is the word/phrase.
-- short_answer: No options needed. correctAnswer should be a brief expected response.
-- matching: Provide 3-5 pairs in 'matchingPairs'. CRITICAL: Each 'left' value must be UNIQUE (no duplicates). Each 'right' value must be UNIQUE (no duplicates). 'questionText' should be "Match the following...". Ignore 'options' and 'correctAnswer'.
-- ordering: Provide 3-5 items in 'orderingItems' in the CORRECT chronological or logical order. 'questionText' should be "Arrange the following...". Ignore 'options' and 'correctAnswer'.`;
+<type_rules>
+- multiple_choice: Exactly 4 options labeled A, B, C, D. correctAnswer is the letter only (e.g., "B"). All distractors must be plausible but unambiguously wrong based on the document.
+- true_false: options = ["True", "False"]. correctAnswer is "True" or "False". Avoid trivially obvious statements.
+- fill_blank: questionText contains "___" for the blank. correctAnswer is the exact word or phrase. Omit options.
+- short_answer: No options. correctAnswer is a brief expected response (1–2 sentences max).
+- matching: 3–8 pairs in matchingPairs. Every left value must be unique. Right values MAY repeat (many-to-one). Include at least one repeated right value when possible. questionText starts with "Match the following". Omit options and correctAnswer.
+- ordering: 3–5 items in orderingItems in the CORRECT order. questionText starts with "Arrange the following". Omit options and correctAnswer.
+</type_rules>
+
+<field_rules>
+- Only include fields relevant to the question type. Omit unused fields entirely rather than setting them to null or empty arrays.
+- hint is only included when the mode is "learn". Omit for revision and test modes.
+- sourceReference should be as specific as possible: prefer "Page 12, Section 3.2" over "Page 12".
+</field_rules>
+</output_format>`;
 
 export function buildPrompt(
   documentContent: string,
   mode: "learn" | "revision" | "test",
   questionCount: number | undefined,
-  questionTypes: string[]
+  questionTypes: string[],
+  difficulty?: "easy" | "mixed" | "hard",
 ): string {
   const countInstruction = questionCount
-    ? `NUMBER OF QUESTIONS TO GENERATE: ${questionCount}
-    
-    Generate exactly ${questionCount} questions using only the allowed question types.`
-    : `NUMBER OF QUESTIONS TO GENERATE: Determine based on content coverage (Target: 20-50 questions).
-    
-    Aim to generate between 20 and 50 questions that comprehensively cover the document. 
-    However, if the document content is short or insufficient to support 20 unique, high-quality questions, generate as many as possible without redundancy. Do not exceed 50 questions.`;
+    ? `Generate exactly ${questionCount} questions.`
+    : `Generate 20–50 questions for comprehensive coverage. If the document is too short to support 20 unique, high-quality questions, generate as many as the content supports without redundancy. Never exceed 50.`;
+
+  let difficultySection = "";
+  if (difficulty && difficulty !== "mixed" && DIFFICULTY_OVERRIDES[difficulty]) {
+    const dist = DIFFICULTY_OVERRIDES[difficulty];
+    difficultySection = `
+<difficulty_override>
+IMPORTANT: Override the mode's default difficulty distribution. Use this distribution instead:
+- ${dist.easy}% easy questions
+- ${dist.medium}% medium questions
+- ${dist.hard}% hard questions
+This takes priority over any difficulty distribution specified in the mode instructions above.
+</difficulty_override>`;
+  }
 
   return `${SYSTEM_PROMPT}
 
 ${MODE_INSTRUCTIONS[mode]}
 
-ALLOWED QUESTION TYPES: ${questionTypes.join(", ")}
+<generation_parameters>
+Allowed question types: ${questionTypes.join(", ")}
+Only use the types listed above. Do not generate other types.
 ${countInstruction}
-
+Distribute topics proportionally to their coverage in the document — topics with more content get more questions.
+</generation_parameters>
+${difficultySection}
 ${OUTPUT_FORMAT}
 
----
-DOCUMENT CONTENT TO GENERATE QUESTIONS FROM:
----
+<document>
 ${documentContent}
----
-
-Generate questions using only the allowed question types. Ensure variety in topics covered.`;
+</document>`;
 }

@@ -16,15 +16,15 @@ export function Navbar({ user }: { user: any }) {
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-4 sticky top-0 z-20 flex justify-between items-center">
+    <header className="bg-card border-b border-border px-4 md:px-8 py-4 sticky top-0 z-20 flex justify-between items-center">
       <div className="flex items-center gap-4">
         <MobileSidebar user={user} />
-        <h1 className="hidden md:block text-xl font-semibold text-slate-800 capitalize">
+        <h1 className="hidden md:block text-xl font-semibold text-foreground capitalize">
           {getTitle()}
         </h1>
       </div>
       <div className="flex items-center gap-4">
-        <div className="hidden md:flex items-center gap-2 text-sm text-slate-600">
+        <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
           StudyBuddy AI Active
         </div>

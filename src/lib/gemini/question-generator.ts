@@ -1,8 +1,9 @@
-import { genAI, GEMINI_MODEL } from "./client";
+import { processDocument } from "../pipeline/process-document-service";
 import { buildPrompt } from "./prompts";
 import { z } from "zod";
 
-// Validation schema for generated questions
+// --- Validation Schemas ---
+
 const QuestionSchema = z.object({
   type: z.enum([
     "multiple_choice",
@@ -12,23 +13,25 @@ const QuestionSchema = z.object({
     "matching",
     "ordering",
   ]),
-  topic: z.string(),
+  topic: z.string().min(1),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  questionText: z.string(),
+  questionText: z.string().min(1),
   options: z.array(z.string()).optional(),
-  correctAnswer: z.string().optional(), // Made optional for matching/ordering
-  explanation: z.string(),
+  correctAnswer: z.string().optional(),
+  explanation: z.string().min(1),
   hint: z.string().optional(),
   sourceReference: z.string().optional(),
-  timeEstimate: z.number().default(30),
+  timeEstimate: z.number().min(10).max(300).default(30),
   matchingPairs: z
     .array(z.object({ left: z.string(), right: z.string() }))
+    .min(3)
+    .max(8)
     .optional(),
-  orderingItems: z.array(z.string()).optional(),
+  orderingItems: z.array(z.string()).min(3).max(5).optional(),
 });
 
 const GeneratedQuestionsSchema = z.object({
-  questions: z.array(QuestionSchema),
+  questions: z.array(QuestionSchema).min(1),
 });
 
 export type GeneratedQuestion = z.infer<typeof QuestionSchema>;
@@ -38,82 +41,113 @@ interface GenerateQuestionsParams {
   mode: "learn" | "revision" | "test";
   questionCount?: number;
   questionTypes: string[];
+  difficulty?: "easy" | "mixed" | "hard";
+  quizId?: string;
+  documentId?: string;
+  userId?: string;
 }
+
+// --- Question Generation ---
 
 export async function generateQuestions({
   documentContent,
   mode,
   questionCount,
   questionTypes,
+  difficulty,
+  quizId,
+  documentId,
+  userId,
 }: GenerateQuestionsParams): Promise<GeneratedQuestion[]> {
   const prompt = buildPrompt(
     documentContent,
     mode,
     questionCount,
-    questionTypes
+    questionTypes,
+    difficulty,
   );
 
   try {
-    const response = await genAI.models.generateContent({
-      model: GEMINI_MODEL,
+    const response = await processDocument({
+      task: "quiz_generate",
       contents: [{ text: prompt }],
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.3,
-      },
+      responseMimeType: "application/json",
+      quizId,
+      documentId,
+      userId,
     });
 
-    let responseText = response.text || "";
+    const responseText = response.text?.trim();
+    if (!responseText) {
+      throw new Error("Empty response from model");
+    }
 
-    // Clean response text (remove markdown code blocks if present)
-    responseText = responseText.replace(/```json\n?|\n?```/g, "").trim();
-
-    // Parse and validate the response
-    const parsed = JSON.parse(responseText);
+    const parsed = JSON.parse(
+      responseText.replace(/```json\n?|\n?```/g, "").trim(),
+    );
     const validated = GeneratedQuestionsSchema.parse(parsed);
 
-    // Add hints only for learn mode
+    // Strip hints outside learn mode
     if (mode !== "learn") {
-      validated.questions.forEach((q) => {
-        delete q.hint;
-      });
+      validated.questions.forEach((q) => delete q.hint);
     }
 
     return validated.questions;
   } catch (error) {
     console.error("Question generation error:", error);
+
+    if (error instanceof z.ZodError) {
+      throw new Error(
+        `Generated questions failed validation: ${error.issues.map((i) => i.message).join(", ")}`,
+      );
+    }
+    if (error instanceof SyntaxError) {
+      throw new Error("Model returned invalid JSON. Please try again.");
+    }
+
     throw new Error("Failed to generate questions. Please try again.");
   }
 }
 
-// Extract topics from document for preview
+// --- Topic Extraction ---
+
+const TOPIC_EXTRACTION_PROMPT = `Extract the main topics and sections from this educational document.
+
+<rules>
+- Return topics in the order they appear in the document.
+- Use concise, descriptive names (e.g., "Cell Membrane Structure" not "The part about cell membranes").
+- Only include topics with substantial content — skip incidental mentions.
+- Aim for 3–15 topics depending on document scope.
+</rules>
+
+Return ONLY a JSON array of topic strings.
+
+<document>
+`;
+
 export async function extractTopics(
-  documentContent: string
+  documentContent: string,
+  documentId?: string,
+  userId?: string,
 ): Promise<string[]> {
-  const prompt = `Analyze the following document and extract the main topics/sections covered.
-The document has been pre-filtered to remove cover pages, table of contents, and non-content pages.
-Return ONLY a JSON array of topic strings, nothing else.
-Example: ["Introduction to Cells", "Cell Membrane", "Mitochondria"]
-
-DOCUMENT:
-${documentContent.slice(0, 15000)}
-
-Return the topics array:`;
+  const prompt = `${TOPIC_EXTRACTION_PROMPT}${documentContent.slice(0, 15000)}\n</document>`;
 
   try {
-    const response = await genAI.models.generateContent({
-      model: GEMINI_MODEL,
+    const response = await processDocument({
+      task: "topic_extract",
       contents: [{ text: prompt }],
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.1,
-      },
+      responseMimeType: "application/json",
+      documentId,
+      userId,
     });
 
-    let text = response.text || "[]";
-    text = text.replace(/```json\n?|\n?```/g, "").trim();
+    const text = response.text?.trim();
+    if (!text) return ["General"];
 
-    return JSON.parse(text);
+    const parsed = JSON.parse(text.replace(/```json\n?|\n?```/g, "").trim());
+    const validated = z.array(z.string().min(1)).min(1).parse(parsed);
+
+    return validated;
   } catch {
     return ["General"];
   }

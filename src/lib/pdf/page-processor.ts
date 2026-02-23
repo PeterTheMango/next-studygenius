@@ -1,4 +1,4 @@
-import { genAI, GEMINI_MODEL } from "../gemini/client";
+import { processDocument } from "../pipeline/process-document-service";
 
 export interface ExtractedPage {
   pageNumber: number;
@@ -12,16 +12,14 @@ export interface PageExtractionResult {
   extractionMethod: "gemini-multimodal";
 }
 
-/**
- * Extracts text from PDF page-by-page using Gemini's multimodal API
- * Uses a single API call with instructions to mark page boundaries
- */
 export async function extractPageByPage(
-  pdfBase64: string
+  pdfBase64: string,
+  documentId?: string,
+  userId?: string
 ): Promise<PageExtractionResult> {
   try {
-    const response = await genAI.models.generateContent({
-      model: GEMINI_MODEL,
+    const response = await processDocument({
+      task: "pdf_extract",
       contents: [
         {
           inlineData: {
@@ -30,36 +28,38 @@ export async function extractPageByPage(
           },
         },
         {
-          text: `Extract all text content from this PDF document, preserving the structure and formatting.
+          text: `Extract all text from every page of this PDF document.
 
-IMPORTANT: For each page, you MUST:
-1. Prefix the page content with "PAGE N:" where N is the page number (starting from 1)
-2. After each page's content, add a separator line: "---PAGE_BREAK---"
+<rules>
+- Preserve the original structure: headings, paragraphs, lists, tables, and whitespace.
+- Do NOT summarize, paraphrase, or omit any text. Extract verbatim.
+- If a page is blank or contains only images with no text, output "PAGE N:" followed by "[BLANK]".
+- If text spans a page break mid-sentence, include the partial text on each respective page as it appears.
+- Do NOT add commentary, explanations, or any text not present in the original document.
+</rules>
 
-Example format:
+<format>
 PAGE 1:
-[content of page 1]
+[verbatim text content of page 1]
 ---PAGE_BREAK---
 PAGE 2:
-[content of page 2]
+[verbatim text content of page 2]
 ---PAGE_BREAK---
+</format>
 
-Extract the text now, following this format exactly.`,
+Output every page using this exact format. Begin with PAGE 1:`,
         },
       ],
-      config: {
-        temperature: 0.1,
-        maxOutputTokens: 32768, // Increased for large documents
-      },
+      documentId,
+      userId,
     });
 
-    const extractedText = response.text || "";
+    const extractedText = response.text;
 
     if (!extractedText) {
       throw new Error("No text extracted from PDF");
     }
 
-    // Parse the response to split into pages
     const pages = parsePageContent(extractedText);
 
     if (pages.length === 0) {
@@ -74,7 +74,7 @@ Extract the text now, following this format exactly.`,
   } catch (error) {
     console.error("PDF page extraction error:", error);
     throw new Error(
-      `Failed to extract pages from PDF: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Failed to extract pages from PDF: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 }
@@ -152,9 +152,10 @@ function parsePageContent(text: string): ExtractedPage[] {
 /**
  * Validates that page extraction was successful
  */
-export function validatePageExtraction(
-  result: PageExtractionResult
-): { valid: boolean; error?: string } {
+export function validatePageExtraction(result: PageExtractionResult): {
+  valid: boolean;
+  error?: string;
+} {
   if (result.pages.length === 0) {
     return { valid: false, error: "No pages extracted" };
   }
@@ -169,7 +170,7 @@ export function validatePageExtraction(
   // Check for reasonable content length
   const totalChars = result.pages.reduce(
     (sum, page) => sum + page.characterCount,
-    0
+    0,
   );
 
   if (totalChars < 100) {

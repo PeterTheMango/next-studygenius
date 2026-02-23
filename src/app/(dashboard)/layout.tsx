@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
+import { ThemeInitializer } from "@/components/theme-initializer";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -38,10 +39,6 @@ export default async function DashboardLayout({
 
   if (profileError) {
     console.error("Error fetching user profile:", profileError);
-    // Decide how to handle this error:
-    // - Redirect to login (if profile is essential)
-    // - Proceed without profile (if profile is optional)
-    // For now, I'll proceed without profile, just not augment the user object.
   }
 
   if (user && profile) {
@@ -49,9 +46,21 @@ export default async function DashboardLayout({
     user.user_metadata.profile = profile;
   }
 
+  // Build theme preferences from profile
+  const themePreferences = {
+    appearanceMode: (profile?.appearance_mode || "system") as "light" | "dark" | "system",
+    themeColor: profile?.theme_color || "blue",
+    themeCustomPrimary: profile?.theme_custom_primary || null,
+    themeCustomSecondary: profile?.theme_custom_secondary || null,
+    themeCustomAccent: profile?.theme_custom_accent || null,
+    fontFamily: profile?.font_family || "inter",
+    fontSize: profile?.font_size || "medium",
+  };
+
   return (
-    <div className="h-screen bg-slate-50 flex">
-      <div className="hidden md:block w-64 bg-white border-r border-slate-200 shrink-0 z-10">
+    <div className="h-screen bg-background flex">
+      <ThemeInitializer preferences={themePreferences} />
+      <div className="hidden md:block w-64 bg-card border-r border-border shrink-0 z-10">
         <Sidebar className="h-full" user={user} />
       </div>
       <div className="flex-1 flex flex-col h-full overflow-hidden">

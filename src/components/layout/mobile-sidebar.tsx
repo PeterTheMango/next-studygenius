@@ -26,7 +26,7 @@ export const MobileSidebar = ({ user }: { user: any }) => {
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild className="md:hidden">
         <button>
-          <Menu className="w-6 h-6 text-slate-800" />
+          <Menu className="w-6 h-6 text-foreground" />
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-64">

@@ -27,6 +27,12 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
     notFound()
   }
 
+  // Redirect to generating page if quiz is still in progress
+  const generationStatuses = ['queued', 'generating', 'cleaning', 'structuring', 'finalizing']
+  if (quiz.status && generationStatuses.includes(quiz.status)) {
+    redirect(`/quizzes/${id}/generating`)
+  }
+
   // Fetch past attempts
   const { data: attempts } = await supabase
     .from('quiz_attempts')

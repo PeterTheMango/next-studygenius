@@ -62,60 +62,178 @@ export const FONT_FAMILIES = {
 
 export type FontFamilyKey = keyof typeof FONT_FAMILIES;
 
-// Font size options (base font size in rem)
+// Font size options (base font size in px)
 export const FONT_SIZES = {
   small: {
     name: "Small",
-    value: "0.875rem", // 14px
+    value: "14px",
   },
   medium: {
     name: "Medium",
-    value: "1rem", // 16px
+    value: "16px",
   },
   large: {
     name: "Large",
-    value: "1.125rem", // 18px
+    value: "18px",
   },
 } as const;
 
 export type FontSizeKey = keyof typeof FONT_SIZES;
 
-// Apply theme to document root
-export function applyTheme(preferences: {
+export type AppearanceMode = "light" | "dark" | "system";
+
+export interface ThemePreferences {
+  appearanceMode?: AppearanceMode;
   themeColor: string;
   themeCustomPrimary?: string | null;
   themeCustomSecondary?: string | null;
   themeCustomAccent?: string | null;
   fontFamily: string;
   fontSize: string;
-}) {
+}
+
+// Convert hex to oklch string for CSS variables
+// Uses sRGB -> linear sRGB -> XYZ -> oklab -> oklch pipeline
+function hexToOklch(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  // sRGB to linear sRGB
+  const linearize = (c: number) =>
+    c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const lr = linearize(r);
+  const lg = linearize(g);
+  const lb = linearize(b);
+
+  // Linear sRGB to OKLab (using the cube-root matrix approach)
+  const l_ = 0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb;
+  const m_ = 0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb;
+  const s_ = 0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb;
+
+  const l_cbrt = Math.cbrt(l_);
+  const m_cbrt = Math.cbrt(m_);
+  const s_cbrt = Math.cbrt(s_);
+
+  const L = 0.2104542553 * l_cbrt + 0.793617785 * m_cbrt - 0.0040720468 * s_cbrt;
+  const a = 1.9779984951 * l_cbrt - 2.428592205 * m_cbrt + 0.4505937099 * s_cbrt;
+  const bOk = 0.0259040371 * l_cbrt + 0.7827717662 * m_cbrt - 0.808675766 * s_cbrt;
+
+  // OKLab to OKLCH
+  const C = Math.sqrt(a * a + bOk * bOk);
+  let H = (Math.atan2(bOk, a) * 180) / Math.PI;
+  if (H < 0) H += 360;
+
+  // Round for cleaner CSS output
+  const lRound = Math.round(L * 1000) / 1000;
+  const cRound = Math.round(C * 1000) / 1000;
+  const hRound = Math.round(H * 1000) / 1000;
+
+  return `oklch(${lRound} ${cRound} ${hRound})`;
+}
+
+// Compute a contrasting foreground color for a given hex background
+function foregroundForHex(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  // Relative luminance
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.5 ? "oklch(0.205 0 0)" : "oklch(0.985 0 0)";
+}
+
+// Private reference to the system media query listener so we can clean it up
+let _systemMediaCleanup: (() => void) | null = null;
+
+function applyAppearanceMode(mode: AppearanceMode) {
   const root = document.documentElement;
 
-  // Apply color theme
+  // Clean up previous system listener
+  if (_systemMediaCleanup) {
+    _systemMediaCleanup();
+    _systemMediaCleanup = null;
+  }
+
+  if (mode === "light") {
+    root.classList.remove("dark");
+  } else if (mode === "dark") {
+    root.classList.add("dark");
+  } else {
+    // system
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = (e: MediaQueryList | MediaQueryListEvent) => {
+      if (e.matches) {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    };
+    apply(mql);
+    const handler = (e: MediaQueryListEvent) => apply(e);
+    mql.addEventListener("change", handler);
+    _systemMediaCleanup = () => mql.removeEventListener("change", handler);
+  }
+}
+
+// Apply theme to document root
+export function applyTheme(preferences: ThemePreferences) {
+  const root = document.documentElement;
+
+  // 1. Appearance mode (light/dark/system)
+  if (preferences.appearanceMode) {
+    applyAppearanceMode(preferences.appearanceMode);
+  }
+
+  // 2. Resolve colors (custom overrides preset)
+  let primary: string;
+  let secondary: string;
+  let accent: string;
+
   if (
     preferences.themeCustomPrimary &&
     preferences.themeCustomSecondary &&
     preferences.themeCustomAccent
   ) {
-    // Use custom colors
-    root.style.setProperty("--color-primary", preferences.themeCustomPrimary);
-    root.style.setProperty("--color-secondary", preferences.themeCustomSecondary);
-    root.style.setProperty("--color-accent", preferences.themeCustomAccent);
+    primary = preferences.themeCustomPrimary;
+    secondary = preferences.themeCustomSecondary;
+    accent = preferences.themeCustomAccent;
   } else {
-    // Use preset color theme
-    const colorTheme = THEME_COLORS[preferences.themeColor as ThemeColorKey] || THEME_COLORS.blue;
-    root.style.setProperty("--color-primary", colorTheme.primary);
-    root.style.setProperty("--color-secondary", colorTheme.secondary);
-    root.style.setProperty("--color-accent", colorTheme.accent);
+    const preset =
+      THEME_COLORS[preferences.themeColor as ThemeColorKey] || THEME_COLORS.blue;
+    primary = preset.primary;
+    secondary = preset.secondary;
+    accent = preset.accent;
   }
 
-  // Apply font family
-  const fontFamily = FONT_FAMILIES[preferences.fontFamily as FontFamilyKey] || FONT_FAMILIES.inter;
-  root.style.setProperty("--font-family", fontFamily.value);
+  // Convert hex to oklch and set the CSS variables that globals.css @theme inline reads
+  const primaryOklch = hexToOklch(primary);
+  const secondaryOklch = hexToOklch(secondary);
+  const accentOklch = hexToOklch(accent);
 
-  // Apply font size
-  const fontSize = FONT_SIZES[preferences.fontSize as FontSizeKey] || FONT_SIZES.medium;
-  root.style.setProperty("--font-size-base", fontSize.value);
+  // --primary, --secondary, --accent are consumed by the @theme inline block
+  root.style.setProperty("--primary", primaryOklch);
+  root.style.setProperty("--primary-foreground", foregroundForHex(primary));
+  root.style.setProperty("--secondary", secondaryOklch);
+  root.style.setProperty("--secondary-foreground", foregroundForHex(secondary));
+  root.style.setProperty("--accent", accentOklch);
+  root.style.setProperty("--accent-foreground", foregroundForHex(accent));
+  root.style.setProperty("--ring", primaryOklch);
+
+  // Sidebar mirrors primary
+  root.style.setProperty("--sidebar-primary", primaryOklch);
+  root.style.setProperty("--sidebar-primary-foreground", foregroundForHex(primary));
+  root.style.setProperty("--sidebar-accent", accentOklch);
+  root.style.setProperty("--sidebar-accent-foreground", foregroundForHex(accent));
+
+  // 3. Font family
+  const fontFamily =
+    FONT_FAMILIES[preferences.fontFamily as FontFamilyKey] || FONT_FAMILIES.inter;
+  root.style.setProperty("font-family", fontFamily.value);
+
+  // 4. Font size (set on root so rem-based sizing cascades)
+  const fontSize =
+    FONT_SIZES[preferences.fontSize as FontSizeKey] || FONT_SIZES.medium;
+  root.style.fontSize = fontSize.value;
 }
 
 // Hex color validation

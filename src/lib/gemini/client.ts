@@ -11,4 +11,5 @@ export const genAI = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || "dummy",
 });
 
+/** @deprecated Use `resolveModel()` from `@/lib/pipeline` instead. Kept for backward compat. */
 export const GEMINI_MODEL = "gemini-2.5-flash";

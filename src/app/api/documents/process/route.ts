@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     let filteringResult;
     try {
-      filteringResult = await filterPDFPages(base64);
+      filteringResult = await filterPDFPages(base64, documentId, user.id);
     } catch (extractionError) {
       const errorMessage =
         extractionError instanceof Error
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { filteredText, pageMetadata, stats } = filteringResult;
+    const { filteredText, cleanedData, pageMetadata, stats } = filteringResult;
 
     // Validate: all pages filtered scenario
     if (stats.keptPages === 0) {
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract topics from filtered content
-    const topics = await extractTopics(filteredText);
+    const topics = await extractTopics(filteredText, documentId, user.id);
 
     // Update document with filtered content and metadata
     const { error: updateError } = await supabase
@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: "ready",
         extracted_text: filteredText,
+        cleaned_data: cleanedData,
         topics: topics,
         page_count: stats.keptPages,
         original_page_count: stats.totalPages,

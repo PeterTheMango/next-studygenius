@@ -3,9 +3,14 @@ import { extractPageByPage, validatePageExtraction } from "./page-processor";
 import type { ExtractedPage } from "./page-processor";
 import { classifyPageHeuristic } from "./heuristic-classifier";
 import { classifyPagesWithAI } from "./ai-classifier";
+import { cleanDocument } from "../pipeline/cleanup";
+import { structureWithLLM } from "../pipeline/cleanup/llm-structuring";
+import type { ConfidenceMetadata } from "../pipeline/types";
 
 export interface FilteringResult {
   filteredText: string;
+  cleanedData: string;
+  confidenceMetadata: ConfidenceMetadata;
   pageMetadata: PageMetadata[];
   stats: {
     totalPages: number;
@@ -28,14 +33,16 @@ const FILTERED_TYPES: PageClassification[] = [
 ];
 
 /**
- * Main pipeline: extracts pages from PDF, classifies them, and filters unwanted pages
+ * Main pipeline: extracts pages from PDF, cleans text, classifies, and filters unwanted pages
  */
 export async function filterPDFPages(
-  pdfBase64: string
+  pdfBase64: string,
+  documentId?: string,
+  userId?: string
 ): Promise<FilteringResult> {
   // Step 1: Extract pages from PDF
   console.log("[Filter Pipeline] Extracting pages from PDF...");
-  const extractionResult = await extractPageByPage(pdfBase64);
+  const extractionResult = await extractPageByPage(pdfBase64, documentId, userId);
 
   // Validate extraction
   const validation = validatePageExtraction(extractionResult);
@@ -46,14 +53,39 @@ export async function filterPDFPages(
   const { pages, totalPages } = extractionResult;
   console.log(`[Filter Pipeline] Extracted ${totalPages} pages`);
 
-  // Step 2: Classify each page
+  // Step 2: Run local cleanup pipeline
+  console.log("[Filter Pipeline] Running text cleanup...");
+  const cleanupResult = cleanDocument(
+    pages.map((p) => ({ pageNumber: p.pageNumber, content: p.content }))
+  );
+  const { confidenceMetadata } = cleanupResult;
+
+  // Step 3: Generate cleaned data (LLM structured or locally cleaned)
+  console.log("[Filter Pipeline] Generating cleaned data...");
+  let cleanedData: string;
+  try {
+    cleanedData = await structureWithLLM(
+      cleanupResult.pages.map((p) => ({
+        pageNumber: p.pageNumber,
+        content: p.content,
+      })),
+      { documentId, userId }
+    );
+  } catch (error) {
+    console.warn("[Filter Pipeline] LLM structuring failed, using local cleanup:", error);
+    cleanedData = cleanupResult.pages
+      .map((p) => `--- Page ${p.pageNumber} ---\n\n${p.content}`)
+      .join("\n\n");
+  }
+
+  // Step 4: Classify each page (using original pages for classification accuracy)
   console.log("[Filter Pipeline] Classifying pages...");
   const { pageMetadata, pagesToClassifyWithAI } = await classifyPages(
     pages,
     totalPages
   );
 
-  // Step 3: Batch AI classification for uncertain pages
+  // Step 5: Batch AI classification for uncertain pages
   let aiClassificationsUsed = 0;
   if (pagesToClassifyWithAI.length > 0) {
     console.log(
@@ -61,15 +93,17 @@ export async function filterPDFPages(
     );
     aiClassificationsUsed = await runAIClassification(
       pagesToClassifyWithAI,
-      pageMetadata
+      pageMetadata,
+      documentId,
+      userId
     );
   }
 
-  // Step 4: Apply filtering rules
+  // Step 6: Apply filtering rules
   console.log("[Filter Pipeline] Applying filtering rules...");
   const filteringResult = applyFiltering(pages, pageMetadata);
 
-  // Step 5: Handle edge cases
+  // Step 7: Handle edge cases
   const finalResult = handleEdgeCases(
     filteringResult,
     pages,
@@ -77,7 +111,7 @@ export async function filterPDFPages(
     totalPages
   );
 
-  // Step 6: Calculate statistics
+  // Step 8: Calculate statistics
   const stats = calculateStats(
     pageMetadata,
     totalPages,
@@ -88,6 +122,8 @@ export async function filterPDFPages(
 
   return {
     filteredText: finalResult.filteredText,
+    cleanedData,
+    confidenceMetadata,
     pageMetadata: finalResult.pageMetadata,
     stats,
   };
@@ -142,7 +178,9 @@ async function classifyPages(
  */
 async function runAIClassification(
   pagesToClassify: Array<{ index: number; page: ExtractedPage }>,
-  pageMetadata: PageMetadata[]
+  pageMetadata: PageMetadata[],
+  documentId?: string,
+  userId?: string
 ): Promise<number> {
   const BATCH_SIZE = 10;
   let totalAIClassifications = 0;
@@ -152,24 +190,19 @@ async function runAIClassification(
     const batch = pagesToClassify.slice(i, i + BATCH_SIZE);
 
     // Prepare batch data
-    const batchData = batch.map(({ page }) => {
-      const metadata = pageMetadata.find(
-        (m) => m.pageNumber === page.pageNumber
-      );
-      return {
-        page,
-        context: {
-          pageNumber: page.pageNumber,
-          totalPages: pageMetadata.length,
-          previousClassifications: pageMetadata
-            .filter((m) => m.pageNumber < page.pageNumber)
-            .map((m) => m.classification),
-        },
-      };
-    });
+    const batchData = batch.map(({ page }) => ({
+      page,
+      context: {
+        pageNumber: page.pageNumber,
+        totalPages: pageMetadata.length,
+        previousClassifications: pageMetadata
+          .filter((m) => m.pageNumber < page.pageNumber)
+          .map((m) => m.classification),
+      },
+    }));
 
     // Get AI classifications
-    const aiResults = await classifyPagesWithAI(batchData);
+    const aiResults = await classifyPagesWithAI(batchData, documentId, userId);
 
     // Update metadata with AI results
     aiResults.forEach((result, batchIndex) => {

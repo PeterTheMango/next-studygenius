@@ -216,15 +216,11 @@ export function QuestionCard({
           setActiveLeft(val);
       } else {
           if (activeLeft) {
-              const newState = matchingState.map(pair => 
+              const newState = matchingState.map(pair =>
                   pair.left === activeLeft ? { ...pair, right: val } : pair
               );
-              // Clear duplicate usage
-              const cleanedState = newState.map(pair => 
-                  pair.left !== activeLeft && pair.right === val ? { ...pair, right: null } : pair
-              );
-              setMatchingState(cleanedState);
-              onSelectAnswer(cleanedState);
+              setMatchingState(newState);
+              onSelectAnswer(newState);
               setActiveLeft(null);
           }
       }
@@ -410,13 +406,11 @@ export function QuestionCard({
                   <h4 className="font-semibold text-xs text-muted-foreground uppercase">Matches</h4>
                   {/* Show unique right items from the question definition */}
                   {Array.from(new Set(question.matchingPairs?.map(pair => pair.right) || [])).sort().map((rightVal, index) => {
-                      // is this value matched?
-                      const isMatched = matchingState.some(m => m.right === rightVal);
                       return (
                         <div
                             key={`right-${index}-${rightVal}`}
                             onClick={() => handleMatchClick('right', rightVal)}
-                            className={`p-3 border rounded-lg cursor-pointer ${isMatched ? 'opacity-50' : ''}`}
+                            className="p-3 border rounded-lg cursor-pointer hover:border-primary/50"
                         >
                             {rightVal}
                         </div>

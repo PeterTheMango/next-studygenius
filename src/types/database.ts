@@ -92,6 +92,7 @@ export interface Database {
           original_page_count: number | null
           error_message: string | null
           course_id: string | null
+          cleaned_data: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -110,6 +111,7 @@ export interface Database {
           original_page_count?: number | null
           error_message?: string | null
           course_id?: string | null
+          cleaned_data?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -128,6 +130,7 @@ export interface Database {
           original_page_count?: number | null
           error_message?: string | null
           course_id?: string | null
+          cleaned_data?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -142,7 +145,14 @@ export interface Database {
           mode: 'learn' | 'revision' | 'test'
           settings: Json | null
           question_count: number | null
-          status: 'draft' | 'generating' | 'ready' | 'archived' | null
+          status: 'queued' | 'generating' | 'cleaning' | 'structuring' | 'finalizing' | 'ready' | 'failed' | 'archived' | null
+          generation_stage: string | null
+          error_message: string | null
+          error_stage: string | null
+          retry_count: number
+          generation_started_at: string | null
+          generation_completed_at: string | null
+          difficulty_distribution: Json | null
           created_at: string | null
           updated_at: string | null
         }
@@ -155,7 +165,14 @@ export interface Database {
           mode: 'learn' | 'revision' | 'test'
           settings?: Json | null
           question_count?: number | null
-          status?: 'draft' | 'generating' | 'ready' | 'archived' | null
+          status?: 'queued' | 'generating' | 'cleaning' | 'structuring' | 'finalizing' | 'ready' | 'failed' | 'archived' | null
+          generation_stage?: string | null
+          error_message?: string | null
+          error_stage?: string | null
+          retry_count?: number
+          generation_started_at?: string | null
+          generation_completed_at?: string | null
+          difficulty_distribution?: Json | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -168,7 +185,14 @@ export interface Database {
           mode?: 'learn' | 'revision' | 'test'
           settings?: Json | null
           question_count?: number | null
-          status?: 'draft' | 'generating' | 'ready' | 'archived' | null
+          status?: 'queued' | 'generating' | 'cleaning' | 'structuring' | 'finalizing' | 'ready' | 'failed' | 'archived' | null
+          generation_stage?: string | null
+          error_message?: string | null
+          error_stage?: string | null
+          retry_count?: number
+          generation_started_at?: string | null
+          generation_completed_at?: string | null
+          difficulty_distribution?: Json | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -300,6 +324,65 @@ export interface Database {
           time_spent?: number | null
           answered_at?: string | null
           evaluation_status?: 'pending' | 'evaluated' | 'failed'
+        }
+      }
+      llm_telemetry: {
+        Row: {
+          id: string
+          task_type: string
+          model_id: string
+          effort: string
+          input_tokens: number | null
+          output_tokens: number | null
+          thinking_tokens: number | null
+          estimated_cost_usd: number | null
+          latency_ms: number
+          status: string
+          error_message: string | null
+          pricing_version: string
+          document_id: string | null
+          quiz_id: string | null
+          user_id: string | null
+          attempt_number: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          task_type: string
+          model_id: string
+          effort: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          thinking_tokens?: number | null
+          estimated_cost_usd?: number | null
+          latency_ms: number
+          status: string
+          error_message?: string | null
+          pricing_version?: string
+          document_id?: string | null
+          quiz_id?: string | null
+          user_id?: string | null
+          attempt_number?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          task_type?: string
+          model_id?: string
+          effort?: string
+          input_tokens?: number | null
+          output_tokens?: number | null
+          thinking_tokens?: number | null
+          estimated_cost_usd?: number | null
+          latency_ms?: number
+          status?: string
+          error_message?: string | null
+          pricing_version?: string
+          document_id?: string | null
+          quiz_id?: string | null
+          user_id?: string | null
+          attempt_number?: number
+          created_at?: string | null
         }
       }
     }

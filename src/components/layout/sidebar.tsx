@@ -7,7 +7,6 @@ import {
   FileText,
   BookOpen,
   GraduationCap,
-  Brain,
   LogOut,
   Settings,
 } from "lucide-react";
@@ -71,10 +70,10 @@ export function Sidebar({ className, user }: SidebarProps) {
   ];
 
   return (
-    <aside className={cn("flex flex-col h-full bg-white", className)}>
-      <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+    <aside className={cn("flex flex-col h-full bg-card", className)}>
+      <div className="p-6 border-b border-border flex items-center gap-3">
         <Image src="/icon.svg" alt="StudyGenius" width={32} height={32} />
-        <span className="font-bold text-xl text-slate-800 tracking-tight">
+        <span className="font-bold text-xl text-foreground tracking-tight">
           StudyGenius
         </span>
       </div>
@@ -87,8 +86,8 @@ export function Sidebar({ className, user }: SidebarProps) {
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
               route.active
-                ? "bg-blue-50 text-blue-700"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <route.icon className="w-5 h-5" />
@@ -97,7 +96,7 @@ export function Sidebar({ className, user }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-100 mt-auto">
+      <div className="p-4 border-t border-border mt-auto">
         <div className="px-4 py-2 flex items-center gap-3 mb-2">
           <Avatar>
             <AvatarImage
@@ -109,17 +108,17 @@ export function Sidebar({ className, user }: SidebarProps) {
             </AvatarFallback>
           </Avatar>
           <div className="text-xs overflow-hidden">
-            <p className="font-bold text-slate-800 truncate">
+            <p className="font-bold text-foreground truncate">
               {user?.user_metadata?.full_name || "User"}
             </p>
-            <p className="text-slate-500 truncate max-w-[120px]">
+            <p className="text-muted-foreground truncate max-w-[120px]">
               {user?.email}
             </p>
           </div>
         </div>
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
         >
           <LogOut className="w-5 h-5" />
           Sign Out

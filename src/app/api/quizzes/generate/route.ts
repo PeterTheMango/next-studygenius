@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { generateQuestions } from "@/lib/gemini/question-generator";
 import { z } from "zod";
 
 const GenerateQuizSchema = z.object({
   documentId: z.string().uuid(),
   title: z.string().min(1).max(200),
   mode: z.enum(["learn", "revision", "test"]),
+  idempotencyKey: z.string().uuid().optional(),
   settings: z.object({
     questionCount: z.number().min(5).max(50).optional(),
     questionTypes: z
@@ -78,7 +78,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create quiz record
+    // Idempotency check: look for a quiz with same params created in last 30s
+    const thirtySecondsAgo = new Date(Date.now() - 30_000).toISOString();
+    const { data: existingQuiz } = await supabase
+      .from("quizzes")
+      .select("id, status")
+      .eq("document_id", documentId)
+      .eq("user_id", user.id)
+      .eq("title", title)
+      .eq("mode", mode)
+      .gte("created_at", thirtySecondsAgo)
+      .in("status", ["queued", "generating", "cleaning", "structuring", "finalizing"])
+      .limit(1)
+      .single();
+
+    if (existingQuiz) {
+      // Return existing quiz instead of creating a duplicate
+      return NextResponse.json(
+        { quizId: existingQuiz.id },
+        { status: 201 }
+      );
+    }
+
+    // Create quiz record with queued status
     const { data: quiz, error: quizError } = await supabase
       .from("quizzes")
       .insert({
@@ -87,7 +109,7 @@ export async function POST(request: NextRequest) {
         title,
         mode,
         settings,
-        status: "generating",
+        status: "queued",
       })
       .select()
       .single();
@@ -100,94 +122,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    try {
-      // Generate questions using Gemini
-      const questions = await generateQuestions({
-        documentContent: document.extracted_text,
-        mode,
-        questionCount: settings.questionCount,
-        questionTypes: settings.questionTypes,
-      });
+    // Fire-and-forget: invoke Edge Function
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-      // Insert questions
-      const questionRecords = questions.map((q, index) => ({
-        quiz_id: quiz.id,
-        type: q.type,
-        topic: q.topic,
-        difficulty: q.difficulty,
-        question_text: q.questionText,
-        options:
-          q.type === "matching"
-            ? q.matchingPairs
-            : q.type === "ordering"
-            ? q.orderingItems
-            : q.options || null,
-        correct_answer: q.correctAnswer || "", // Handle optional correct answer
-        explanation: q.explanation,
-        hint: q.hint || null,
-        source_reference: q.sourceReference || null,
-        time_estimate: q.timeEstimate,
-        order_index: index,
-      }));
-
-      const { error: insertError } = await supabase
-        .from("questions")
-        .insert(questionRecords);
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      // Update quiz status
-      const updates: any = {
-        status: "ready",
-        question_count: questions.length,
-      };
-
-      // Calculate time limit if per-question limit is set
-      if (settings.timeLimitPerQuestion) {
-        updates.settings = {
-          ...settings,
-          timeLimit: questions.length * settings.timeLimitPerQuestion,
-          questionCount: questions.length, // Store actual count
-        };
-      } else {
-        // Just update count in settings for consistency
-        updates.settings = {
-          ...settings,
-          questionCount: questions.length,
-        };
-      }
-
-      await supabase.from("quizzes").update(updates).eq("id", quiz.id);
-
-      return NextResponse.json(
-        {
-          success: true,
-          quiz: {
-            ...quiz,
-            status: "ready",
-            question_count: questions.length,
-          },
+    if (supabaseUrl && serviceRoleKey) {
+      fetch(`${supabaseUrl}/functions/v1/generate-quiz`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceRoleKey}`,
         },
-        { status: 201 }
-      );
-    } catch (genError) {
-      // Mark quiz as failed if generation fails
+        body: JSON.stringify({
+          quizId: quiz.id,
+          documentContent: document.extracted_text,
+          mode,
+          settings,
+          userId: user.id,
+          documentId,
+        }),
+      }).catch((err) => {
+        console.error("Failed to invoke Edge Function:", err);
+        // Mark quiz as failed if we can't even invoke the function
+        supabase
+          .from("quizzes")
+          .update({
+            status: "failed",
+            error_message: "Failed to start generation",
+            error_stage: "queued",
+          })
+          .eq("id", quiz.id)
+          .then(() => {});
+      });
+    } else {
+      console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY for Edge Function invocation");
       await supabase
         .from("quizzes")
-        .update({ status: "draft" })
+        .update({
+          status: "failed",
+          error_message: "Server configuration error",
+          error_stage: "queued",
+        })
         .eq("id", quiz.id);
-
-      console.error("Question generation error:", genError);
-      return NextResponse.json(
-        {
-          error: "Failed to generate questions",
-          quizId: quiz.id, // Return quiz ID so user can retry
-        },
-        { status: 500 }
-      );
     }
+
+    // Return immediately with quiz ID
+    return NextResponse.json(
+      { quizId: quiz.id },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Generate handler error:", error);
     return NextResponse.json(
