@@ -87,7 +87,7 @@ export function Sidebar({ className, user }: SidebarProps) {
               "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
               route.active
                 ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
             )}
           >
             <route.icon className="w-5 h-5" />
@@ -109,7 +109,7 @@ export function Sidebar({ className, user }: SidebarProps) {
           </Avatar>
           <div className="text-xs overflow-hidden">
             <p className="font-bold text-foreground truncate">
-              {user?.user_metadata?.full_name || "User"}
+              {user?.user_metadata?.profile?.full_name || "User"}
             </p>
             <p className="text-muted-foreground truncate max-w-[120px]">
               {user?.email}

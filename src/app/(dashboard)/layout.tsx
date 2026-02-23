@@ -44,11 +44,15 @@ export default async function DashboardLayout({
   if (user && profile) {
     // Augment user object with profile data
     user.user_metadata.profile = profile;
+    console.log(user);
   }
 
   // Build theme preferences from profile
   const themePreferences = {
-    appearanceMode: (profile?.appearance_mode || "system") as "light" | "dark" | "system",
+    appearanceMode: (profile?.appearance_mode || "system") as
+      | "light"
+      | "dark"
+      | "system",
     themeColor: profile?.theme_color || "blue",
     themeCustomPrimary: profile?.theme_custom_primary || null,
     themeCustomSecondary: profile?.theme_custom_secondary || null,
