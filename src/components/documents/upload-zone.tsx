@@ -28,7 +28,7 @@ export function UploadZone() {
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) { // 50MB limit from API
+    if (file.size > 50 * 1024 * 1024) {
       toast.error("File size must be less than 50MB");
       return;
     }
@@ -37,13 +37,11 @@ export function UploadZone() {
     setProgress(10);
 
     try {
-      // Upload file
-      const formData = new FormData();
-      formData.append("file", file);
-
+      // Step 1: Get signed upload URL from our API (tiny JSON payload)
       const uploadRes = await fetch("/api/documents/upload", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
       });
 
       if (!uploadRes.ok) {
@@ -51,12 +49,40 @@ export function UploadZone() {
         throw new Error(error.error || "Upload failed");
       }
 
-      const { document } = await uploadRes.json();
+      const { signedUrl, token, document } = await uploadRes.json();
+
+      // Step 2: Upload file directly to Supabase Storage via signed URL
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", signedUrl);
+        xhr.setRequestHeader("Content-Type", "application/pdf");
+
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            // Map upload progress to 10-50% of our progress bar
+            const uploadProgress = 10 + Math.round((e.loaded / e.total) * 40);
+            setProgress(uploadProgress);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error("Failed to upload file to storage"));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+
+        xhr.send(file);
+      });
+
       setProgress(50);
       setUploading(false);
       setProcessing(true);
 
-      // Process document
+      // Step 3: Process document
       const processRes = await fetch("/api/documents/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,7 +101,6 @@ export function UploadZone() {
 
       setTimeout(() => {
         router.push(`/documents/${document.id}`);
-        // Reset state
         setProcessing(false);
         setProgress(0);
       }, 500);
@@ -141,7 +166,7 @@ export function UploadZone() {
             </p>
             <p className="text-sm text-slate-500 mt-1">Extracting topics & preparing content</p>
             <div className="w-64 h-2 bg-slate-100 rounded-full mt-4 overflow-hidden">
-              <div 
+              <div
                 className="h-full bg-blue-600 transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
@@ -167,4 +192,3 @@ export function UploadZone() {
     </div>
   );
 }
-

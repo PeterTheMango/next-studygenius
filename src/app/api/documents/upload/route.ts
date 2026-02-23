@@ -13,46 +13,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
+    const { fileName, fileSize } = await request.json();
 
-    // Validate file
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-
-    if (file.type !== "application/pdf") {
+    // Validate
+    if (!fileName || typeof fileName !== "string" || !fileName.toLowerCase().endsWith(".pdf")) {
       return NextResponse.json(
         { error: "Only PDF files are allowed" },
         { status: 400 }
       );
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      // 50MB limit
+    if (!fileSize || typeof fileSize !== "number" || fileSize > 50 * 1024 * 1024) {
       return NextResponse.json(
         { error: "File size exceeds 50MB limit" },
         { status: 400 }
       );
     }
 
-    // Upload to Supabase Storage
-    const fileName = `${user.id}/${Date.now()}-${file.name.replace(
+    // Build storage path
+    const path = `${user.id}/${Date.now()}-${fileName.replace(
       /[^a-zA-Z0-9.-]/g,
       "_"
     )}`;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    // Create signed upload URL so the client can upload directly to Supabase
+    const { data: signedData, error: signedError } = await supabase.storage
       .from("documents")
-      .upload(fileName, file, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
+      .createSignedUploadUrl(path);
 
-    if (uploadError) {
-      console.error("Upload error:", uploadError);
+    if (signedError) {
+      console.error("Signed URL error:", signedError);
       return NextResponse.json(
-        { error: "Failed to upload file" },
+        { error: "Failed to create upload URL" },
         { status: 500 }
       );
     }
@@ -62,17 +54,15 @@ export async function POST(request: NextRequest) {
       .from("documents")
       .insert({
         user_id: user.id,
-        file_name: file.name,
-        file_path: uploadData.path,
-        file_size: file.size,
+        file_name: fileName,
+        file_path: path,
+        file_size: fileSize,
         status: "pending",
       })
       .select()
       .single();
 
     if (dbError) {
-      // Cleanup uploaded file on DB error
-      await supabase.storage.from("documents").remove([uploadData.path]);
       console.error("DB error:", dbError);
       return NextResponse.json(
         { error: "Failed to save document" },
@@ -83,6 +73,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
+        signedUrl: signedData.signedUrl,
+        token: signedData.token,
+        path,
         document,
       },
       { status: 201 }
