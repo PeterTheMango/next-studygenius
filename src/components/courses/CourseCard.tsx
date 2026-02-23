@@ -84,7 +84,7 @@ export function CourseCard({ course }: CourseCardProps) {
   return (
     <div
       onClick={() => router.push(`/courses/${course.id}`)}
-      className="group bg-white p-6 rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg cursor-pointer transition-all relative overflow-hidden"
+      className="group bg-card p-6 rounded-2xl border border-border hover:border-primary hover:shadow-lg cursor-pointer transition-all relative overflow-hidden"
     >
       {/* Color accent bar */}
       <div
@@ -97,7 +97,7 @@ export function CourseCard({ course }: CourseCardProps) {
         <DropdownMenu>
           <DropdownMenuTrigger
             onClick={(e) => e.stopPropagation()}
-            className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <MoreVertical className="w-4 h-4" />
           </DropdownMenuTrigger>
@@ -143,13 +143,13 @@ export function CourseCard({ course }: CourseCardProps) {
       {/* Title and description */}
       <div className="pl-4">
         <div className="flex items-center gap-2 mb-2">
-          <h4 className="font-bold text-slate-800 truncate flex-1 pr-6">
+          <h4 className="font-bold text-foreground truncate flex-1 pr-6">
             {course.title}
           </h4>
         </div>
 
         {course.description && (
-          <p className="text-sm text-slate-600 mb-4 line-clamp-2 min-h-[2.5rem]">
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[2.5rem]">
             {course.description}
           </p>
         )}

@@ -47,7 +47,7 @@ export function SettingsSectionNav() {
             key={item.id}
             href={`#${item.id}`}
             onClick={(event) => handleSectionScroll(event, item.id)}
-            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-slate-600 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
           >
             <item.icon className="h-4 w-4" />
             {item.label}

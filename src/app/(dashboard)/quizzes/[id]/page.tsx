@@ -51,17 +51,17 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-3xl font-bold text-slate-800">{quiz.title}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{quiz.title}</h1>
             <QuizActionsDropdown quizId={quiz.id} quizTitle={quiz.title} />
           </div>
-          <div className="flex items-center gap-2 text-slate-500">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <FileText className="w-4 h-4" />
             <span>{quiz.documents && (quiz.documents as any).file_name}</span>
           </div>
         </div>
         <Link 
           href={`/quizzes/${id}/take`}
-          className="flex items-center gap-2 px-8 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-105 transition-all"
+          className="flex items-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg shadow-xl shadow-primary/30 hover:bg-primary/90 hover:scale-105 transition-all"
         >
           <PlayCircle className="w-5 h-5" />
           Start Quiz
@@ -69,39 +69,39 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-purple-100 text-purple-600 rounded-xl"><GraduationCap className="w-6 h-6" /></div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Mode</p>
-                    <h3 className="text-xl font-bold text-slate-800 capitalize">{quiz.mode}</h3>
+                    <p className="text-sm text-muted-foreground font-medium">Mode</p>
+                    <h3 className="text-xl font-bold text-foreground capitalize">{quiz.mode}</h3>
                 </div>
             </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-blue-100 text-blue-600 rounded-xl"><FileText className="w-6 h-6" /></div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Questions</p>
-                    <h3 className="text-xl font-bold text-slate-800">{quiz.question_count}</h3>
+                    <p className="text-sm text-muted-foreground font-medium">Questions</p>
+                    <h3 className="text-xl font-bold text-foreground">{quiz.question_count}</h3>
                 </div>
             </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-green-100 text-green-600 rounded-xl"><BarChart className="w-6 h-6" /></div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Best Score</p>
-                    <h3 className="text-xl font-bold text-slate-800">{Math.round(bestScore)}%</h3>
+                    <p className="text-sm text-muted-foreground font-medium">Best Score</p>
+                    <h3 className="text-xl font-bold text-foreground">{Math.round(bestScore)}%</h3>
                 </div>
             </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-orange-100 text-orange-600 rounded-xl"><Clock className="w-6 h-6" /></div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Est. Time</p>
-                    <h3 className="text-xl font-bold text-slate-800">{Math.ceil((quiz.question_count || 10) * 0.5)} min</h3>
+                    <p className="text-sm text-muted-foreground font-medium">Est. Time</p>
+                    <h3 className="text-xl font-bold text-foreground">{Math.ceil((quiz.question_count || 10) * 0.5)} min</h3>
                 </div>
             </div>
         </div>
@@ -109,10 +109,10 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
 
       {attempts && attempts.length > 0 && (
         <div>
-          <h3 className="font-semibold text-slate-800 mb-4">Recent Attempts</h3>
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <h3 className="font-semibold text-foreground mb-4">Recent Attempts</h3>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
             {attempts.map((attempt) => (
-              <div key={attempt.id} className="p-4 border-b border-slate-100 last:border-0 flex items-center justify-between hover:bg-slate-50 transition-colors">
+              <div key={attempt.id} className="p-4 border-b border-border last:border-0 flex items-center justify-between hover:bg-accent transition-colors">
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
                     Math.round((attempt.correct_answers || 0) / attempt.total_questions * 100) >= 80 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
@@ -120,8 +120,8 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
                     {Math.round((attempt.correct_answers || 0) / attempt.total_questions * 100)}%
                   </div>
                   <div>
-                    <p className="font-medium text-slate-900">Completed</p>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <p className="font-medium text-foreground">Completed</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Calendar className="w-3 h-3" />
                       <span>{new Date(attempt.completed_at!).toLocaleDateString()}</span>
                       <span>•</span>
@@ -131,7 +131,7 @@ export default async function QuizDetailsPage({ params }: { params: Promise<{ id
                 </div>
                 <Link
                   href={`/quizzes/${id}/results?attempt=${attempt.id}`}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
                   <Eye className="w-4 h-4" />
                   View Results

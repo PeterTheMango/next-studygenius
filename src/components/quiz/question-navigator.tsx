@@ -79,7 +79,7 @@ export function QuestionNavigator({
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-950 ring-2 ring-blue-500 ring-offset-2"
                       : isAnswered
                       ? "border-green-500 bg-green-50 dark:bg-green-950"
-                      : "border-gray-300 bg-white dark:bg-gray-900 hover:border-gray-400"
+                      : "border-border bg-card dark:bg-card hover:border-muted-foreground/40"
                   )}
                   aria-label={`Question ${index + 1}${
                     isCurrent ? " (current)" : ""
@@ -93,7 +93,7 @@ export function QuestionNavigator({
                         ? "text-blue-700 dark:text-blue-300"
                         : isAnswered
                         ? "text-green-700 dark:text-green-300"
-                        : "text-gray-700 dark:text-gray-300"
+                        : "text-muted-foreground"
                     )}
                   >
                     {index + 1}
@@ -112,7 +112,7 @@ export function QuestionNavigator({
                     <Circle
                       className={cn(
                         "absolute -top-1 -right-1 w-4 h-4",
-                        "text-gray-400"
+                        "text-muted-foreground"
                       )}
                     />
                   )}

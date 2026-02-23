@@ -42,38 +42,38 @@ export function DocumentCard({ document }: DocumentCardProps) {
   return (
     <div 
         onClick={() => router.push(`/documents/${document.id}`)}
-        className="group bg-white p-6 rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg cursor-pointer transition-all relative"
+        className="group bg-card p-6 rounded-2xl border border-border hover:border-primary hover:shadow-lg cursor-pointer transition-all relative"
     >
       <button 
         onClick={handleDelete} 
-        className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 transition-colors z-10"
+        className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-destructive transition-colors z-10"
       >
         <Trash2 className="w-4 h-4" />
       </button>
 
       <div className="flex items-start justify-between mb-4">
-        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+        <div className="p-3 bg-primary/10 text-primary rounded-xl group-hover:scale-110 transition-transform">
             <FileText className="w-6 h-6" />
         </div>
-        <span className="text-xs font-medium text-slate-400 mr-8">
+        <span className="text-xs font-medium text-muted-foreground mr-8">
             {(document.file_size / 1024 / 1024).toFixed(2)} MB
         </span>
       </div>
 
-      <h4 className="font-bold text-slate-800 mb-2 truncate pr-6">
+      <h4 className="font-bold text-foreground mb-2 truncate pr-6">
         {document.file_name}
       </h4>
 
       <div className="flex flex-wrap gap-2 mb-4">
         {topics.slice(0, 3).map((topic, i) => (
-            <span key={i} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md">
+            <span key={i} className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded-md">
                 {topic}
             </span>
         ))}
-        {topics.length === 0 && <span className="text-xs text-slate-400 italic">No topics</span>}
+        {topics.length === 0 && <span className="text-xs text-muted-foreground italic">No topics</span>}
       </div>
 
-      <div className="text-sm text-blue-600 font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+      <div className="text-sm text-primary font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
         Generate Quiz <ArrowUpRight className="w-4 h-4" />
       </div>
     </div>

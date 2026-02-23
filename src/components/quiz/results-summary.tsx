@@ -185,12 +185,12 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
       <div className="text-center mb-10">
-        <h2 className="text-4xl font-bold text-slate-900 mb-2">Quiz Complete!</h2>
-        <p className="text-slate-500">Here's how you performed on <span className="font-semibold">{quiz.title}</span></p>
+        <h2 className="text-4xl font-bold text-foreground mb-2">Quiz Complete!</h2>
+        <p className="text-muted-foreground">Here's how you performed on <span className="font-semibold">{quiz.title}</span></p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 mb-10">
-        <div className="col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+        <div className="col-span-1 bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col items-center justify-center">
             <div className="w-40 h-40 relative">
                 <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -209,31 +209,31 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                 </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center flex-col">
-                    <span className="text-3xl font-bold text-slate-800">{percentage}%</span>
-                    <span className="text-xs text-slate-400 font-medium uppercase">Score</span>
+                    <span className="text-3xl font-bold text-foreground">{percentage}%</span>
+                    <span className="text-xs text-muted-foreground font-medium uppercase">Score</span>
                 </div>
             </div>
         </div>
 
         <div className="col-span-2 grid grid-cols-2 gap-4">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
                 <div className="p-4 bg-blue-50 text-blue-600 rounded-xl">
                     <Clock className="w-8 h-8" />
                 </div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Time Taken</p>
-                    <h3 className="text-2xl font-bold text-slate-800">
+                    <p className="text-sm text-muted-foreground font-medium">Time Taken</p>
+                    <h3 className="text-2xl font-bold text-foreground">
                         {Math.floor(localAttempt.timeSpent / 60)}m {Math.round(localAttempt.timeSpent % 60)}s
                     </h3>
                 </div>
             </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
                 <div className="p-4 bg-green-50 text-green-600 rounded-xl">
                     <Target className="w-8 h-8" />
                 </div>
                 <div>
-                    <p className="text-sm text-slate-500 font-medium">Accuracy</p>
-                    <h3 className="text-2xl font-bold text-slate-800">
+                    <p className="text-sm text-muted-foreground font-medium">Accuracy</p>
+                    <h3 className="text-2xl font-bold text-foreground">
                         {localAttempt.correctAnswers} / {localAttempt.totalQuestions}
                     </h3>
                 </div>
@@ -262,14 +262,14 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
             <div className="col-span-2 flex gap-4 mt-2">
                 <button 
                     onClick={onRetry}
-                    className="flex-1 flex items-center justify-center gap-2 py-4 bg-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                    className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
                 >
                     <RotateCcw className="w-5 h-5" />
                     Retry Quiz
                 </button>
                 <button 
                     onClick={onDashboard}
-                    className="flex-1 flex items-center justify-center gap-2 py-4 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold hover:bg-slate-50 transition-all"
+                    className="flex-1 flex items-center justify-center gap-2 py-4 bg-card text-foreground border border-border rounded-xl font-semibold hover:bg-accent transition-all"
                 >
                     <LayoutDashboard className="w-5 h-5" />
                     Dashboard
@@ -279,7 +279,7 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-slate-800">Detailed Review</h3>
+        <h3 className="text-xl font-bold text-foreground">Detailed Review</h3>
         {quiz.questions.map((q, idx) => {
             const answer = localAttempt.answers[q.id];
             const isCorrect = answer?.isCorrect;
@@ -287,10 +287,10 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
             const isOverriding = overridingQuestions.has(q.id);
 
             return (
-                <div key={q.id} className={`bg-white rounded-xl border transition-all ${isCorrect ? 'border-slate-200' : 'border-red-200'}`}>
+                <div key={q.id} className={`bg-card rounded-xl border transition-all ${isCorrect ? 'border-border' : 'border-red-200'}`}>
                     <div 
                         onClick={() => toggleExpand(q.id)}
-                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 rounded-xl"
+                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-accent rounded-xl"
                     >
                         <div className="flex items-center gap-4">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isCorrect ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
@@ -298,7 +298,7 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <p className="font-medium text-slate-800">Question {idx + 1}</p>
+                                  <p className="font-medium text-foreground">Question {idx + 1}</p>
                                   {/* Only show retry badges for learn mode */}
                                   {quiz.mode === 'learn' && answer?.hasRetries && (
                                     <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-xs font-medium rounded">
@@ -306,28 +306,28 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
                                     </span>
                                   )}
                                   {quiz.mode === 'learn' && answer?.totalAttempts && answer.totalAttempts > 1 && (
-                                    <span className="text-xs text-slate-400">
+                                    <span className="text-xs text-muted-foreground">
                                       ({answer.totalAttempts} attempts)
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-slate-500 truncate max-w-lg">{q.questionText.replace(/___/g, '...')}</p>
+                                <p className="text-sm text-muted-foreground truncate max-w-lg">{q.questionText.replace(/___/g, '...')}</p>
                             </div>
                         </div>
-                        {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+                        {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
                     </div>
                     
                     {isExpanded && (
                         <div className="px-16 pb-6 pt-2 animate-in slide-in-from-top-2">
                             <div className="space-y-3">
-                                <p className="text-lg text-slate-800 font-medium">{q.questionText}</p>
+                                <p className="text-lg text-foreground font-medium">{q.questionText}</p>
                                 
                                 <div className="grid md:grid-cols-2 gap-4 mt-4">
                                     <div className={`p-3 rounded-lg border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                                         <p className="text-xs font-bold uppercase tracking-wide mb-1 opacity-70">Your Answer</p>
                                         <p className="font-medium">{answer?.userAnswer || "Skipped"}</p>
                                     </div>
-                                    <div className="p-3 rounded-lg border bg-slate-50 border-slate-200">
+                                    <div className="p-3 rounded-lg border bg-slate-50 border-border">
                                         <p className="text-xs font-bold uppercase tracking-wide mb-1 opacity-70">Correct Answer</p>
                                         <p className="font-medium">{q.correctAnswer}</p>
                                     </div>
@@ -335,8 +335,8 @@ export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
 
                                 {answer?.score !== undefined &&
                                  (q.type === 'short_answer' || q.type === 'fill_blank') && (
-                                  <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                                    <p className="text-sm text-slate-600">
+                                  <div className="mt-3 p-3 bg-slate-50 border border-border rounded-lg">
+                                    <p className="text-sm text-muted-foreground">
                                       (AI Confidence Score: <strong>{answer.score}/100</strong>)
                                     </p>
                                   </div>

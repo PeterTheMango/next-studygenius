@@ -97,8 +97,8 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-300">
       <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">Configure Your Quiz</h2>
-        <p className="text-slate-500">Based on <span className="font-semibold text-slate-700">{documentTitle}</span></p>
+        <h2 className="text-3xl font-bold text-foreground mb-2">Configure Your Quiz</h2>
+        <p className="text-muted-foreground">Based on <span className="font-semibold text-foreground">{documentTitle}</span></p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -111,41 +111,41 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
               onClick={() => setMode(m.id as QuizMode)}
               className={`relative cursor-pointer rounded-2xl p-6 border-2 transition-all duration-200 ${
                 isSelected 
-                  ? `border-blue-500 bg-blue-50 ring-4 ring-blue-500/10` 
-                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                  ? `border-primary bg-primary/5 ring-4 ring-primary/10` 
+                  : 'border-border bg-card hover:border-muted-foreground/30 hover:shadow-md'
               }`}
             >
               <div className={`w-12 h-12 rounded-xl ${m.color} flex items-center justify-center mb-4`}>
                 <Icon className="w-6 h-6" />
               </div>
-              <h3 className="font-bold text-slate-800 mb-2">{m.title}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">{m.desc}</p>
+              <h3 className="font-bold text-foreground mb-2">{m.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{m.desc}</p>
               {isSelected && (
-                <div className="absolute top-4 right-4 w-4 h-4 bg-blue-500 rounded-full animate-pulse" />
+                <div className="absolute top-4 right-4 w-4 h-4 bg-primary rounded-full animate-pulse" />
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
-        <div className="flex items-center gap-2 mb-6 text-slate-800 font-semibold">
-          <Sliders className="w-5 h-5 text-slate-400" />
+      <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+        <div className="flex items-center gap-2 mb-6 text-foreground font-semibold">
+          <Sliders className="w-5 h-5 text-muted-foreground" />
           Settings
         </div>
         
         <div className="space-y-8">
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                     Quiz Title
                 </label>
                 <div className="relative">
-                    <PenLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <PenLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input 
                         type="text" 
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                         placeholder="Enter quiz title..."
                     />
                 </div>
@@ -153,7 +153,7 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
 
             <div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-foreground mb-2">
                     Difficulty Level
                     </label>
                     <div className="flex gap-2">
@@ -163,8 +163,8 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
                         onClick={() => setDifficulty(d as any)}
                         className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium capitalize transition-colors ${
                             difficulty === d
-                            ? 'bg-slate-800 text-white shadow-lg'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            ? 'bg-foreground text-background shadow-lg'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
                         }`}
                         >
                         {d}
@@ -175,7 +175,7 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
+                <label className="block text-sm font-medium text-foreground mb-3">
                     Include Question Types
                 </label>
                 <div className="flex flex-wrap gap-3">
@@ -194,8 +194,8 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
                                 onClick={() => toggleType(type.id as QuestionType)}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
                                     isChecked 
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                    ? 'bg-primary text-primary-foreground border-primary shadow-md' 
+                                    : 'bg-card text-muted-foreground border-border hover:bg-accent'
                                 }`}
                             >
                                 {isChecked && <CheckSquare className="w-4 h-4" />}
@@ -212,7 +212,7 @@ export function QuizBuilder({ documentId, documentTitle }: QuizBuilderProps) {
         <button
           onClick={handleStart}
           disabled={isLoading}
-          className="group relative px-8 py-4 bg-blue-600 text-white rounded-xl font-bold text-lg shadow-xl shadow-blue-600/30 hover:bg-blue-700 hover:scale-105 transition-all disabled:opacity-70 disabled:hover:scale-100"
+          className="group relative px-8 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg shadow-xl shadow-primary/30 hover:bg-primary/90 hover:scale-105 transition-all disabled:opacity-70 disabled:hover:scale-100"
         >
           {isLoading ? (
             <span className="flex items-center gap-2">

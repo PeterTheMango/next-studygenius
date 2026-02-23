@@ -85,7 +85,7 @@ export function DocumentList({ documents }: DocumentListProps) {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search by document name or tags..."
@@ -123,45 +123,45 @@ export function DocumentList({ documents }: DocumentListProps) {
               <div
                 key={doc.id}
                 onClick={() => router.push(`/documents/${doc.id}`)}
-                className="group bg-white p-4 rounded-lg border border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all flex items-center justify-between"
+                className="group bg-card p-4 rounded-lg border border-border hover:border-primary hover:shadow-md cursor-pointer transition-all flex items-center justify-between"
               >
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+                  <div className="p-2 bg-primary/10 text-primary rounded-lg group-hover:scale-110 transition-transform shrink-0">
                     <FileText className="w-5 h-5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-slate-800 truncate">
+                    <h4 className="font-bold text-foreground truncate">
                       {doc.file_name}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">
                       {topics.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {topics.slice(0, 3).map((topic, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-md">
+                            <span key={i} className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-md">
                               {topic}
                             </span>
                           ))}
                           {topics.length > 3 && (
-                            <span className="text-xs text-slate-400">+{topics.length - 3} more</span>
+                            <span className="text-xs text-muted-foreground">+{topics.length - 3} more</span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-xs text-slate-400 italic">No topics</span>
+                        <span className="text-xs text-muted-foreground italic">No topics</span>
                       )}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 shrink-0">
-                  <span className="text-xs text-slate-400 whitespace-nowrap">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {(doc.file_size / 1024 / 1024).toFixed(2)} MB
                   </span>
                   <button
                     onClick={(e) => handleDelete(e, doc.id)}
-                    className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                    className="p-2 text-muted-foreground hover:text-destructive transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                  <ArrowUpRight className="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  <ArrowUpRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </div>
               </div>
             )

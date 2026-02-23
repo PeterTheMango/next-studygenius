@@ -79,44 +79,44 @@ export function DashboardView({ attempts }: DashboardViewProps) {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Stats Cards */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
               <Target className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-slate-500 font-medium">Avg Score</p>
-              <h3 className="text-2xl font-bold text-slate-800">
+              <p className="text-sm text-muted-foreground font-medium">Avg Score</p>
+              <h3 className="text-2xl font-bold text-foreground">
                 {stats.avgScore}%
               </h3>
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-slate-500 font-medium">
+              <p className="text-sm text-muted-foreground font-medium">
                 Total Attempts
               </p>
-              <h3 className="text-2xl font-bold text-slate-800">
+              <h3 className="text-2xl font-bold text-foreground">
                 {stats.activeQuizzes}
               </h3>
             </div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-green-100 text-green-600 rounded-xl">
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-slate-500 font-medium">
+              <p className="text-sm text-muted-foreground font-medium">
                 Time Invested
               </p>
-              <h3 className="text-2xl font-bold text-slate-800">
+              <h3 className="text-2xl font-bold text-foreground">
                 {stats.timeInvested} m
               </h3>
             </div>
@@ -126,8 +126,8 @@ export function DashboardView({ attempts }: DashboardViewProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Charts */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="font-semibold text-slate-800 mb-4">
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
+          <h3 className="font-semibold text-foreground mb-4">
             Performance Overview
           </h3>
           <div className="h-72">
@@ -149,8 +149,8 @@ export function DashboardView({ attempts }: DashboardViewProps) {
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 className="font-semibold text-slate-800 mb-4">Score History</h3>
+        <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
+          <h3 className="font-semibold text-foreground mb-4">Score History</h3>
           {chartData.length > 0 ? (
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -183,7 +183,7 @@ export function DashboardView({ attempts }: DashboardViewProps) {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-72 flex items-center justify-center text-slate-400">
+            <div className="h-72 flex items-center justify-center text-muted-foreground">
               No data available yet
             </div>
           )}
@@ -191,12 +191,12 @@ export function DashboardView({ attempts }: DashboardViewProps) {
       </div>
 
       <div>
-        <h3 className="font-semibold text-slate-800 mb-4">Recent Attempts</h3>
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <h3 className="font-semibold text-foreground mb-4">Recent Attempts</h3>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
           {attempts.length === 0 ? (
-            <div className="p-8 text-center text-slate-500">
+            <div className="p-8 text-center text-muted-foreground">
               No active attempts.{" "}
-              <Link href="/documents" className="text-blue-600 hover:underline">
+              <Link href="/documents" className="text-primary hover:underline">
                 Upload a document
               </Link>{" "}
               to start!
@@ -205,7 +205,7 @@ export function DashboardView({ attempts }: DashboardViewProps) {
             attempts.slice(0, 10).map((attempt) => (
               <div
                 key={attempt.id}
-                className="p-4 border-b border-slate-100 last:border-0 flex items-center gap-4 hover:bg-slate-50 transition-colors"
+                className="p-4 border-b border-border last:border-0 flex items-center gap-4 hover:bg-accent transition-colors"
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
@@ -219,10 +219,10 @@ export function DashboardView({ attempts }: DashboardViewProps) {
                   {Math.round(attempt.score * 100 || 0)}
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-foreground">
                     {attempt.quizzes?.title || "Unknown Quiz"}
                   </p>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span className="capitalize">
                       {attempt.quizzes?.mode} Mode
                     </span>

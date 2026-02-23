@@ -126,7 +126,7 @@ export function AssignDocumentsDialog({
         </DialogHeader>
 
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search documents..."
@@ -143,7 +143,7 @@ export function AssignDocumentsDialog({
             </div>
           ) : filteredDocuments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="w-12 h-12 text-slate-300 mb-3" />
+              <FileText className="w-12 h-12 text-muted-foreground mb-3" />
               <p className="text-muted-foreground">
                 {searchQuery
                   ? "No documents found matching your search"
@@ -159,29 +159,29 @@ export function AssignDocumentsDialog({
                   onClick={() => toggleDocument(doc.id)}
                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     isSelected
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-slate-200 hover:border-slate-300"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/30"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
                       {isSelected ? (
-                        <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center">
+                        <div className="w-5 h-5 bg-primary rounded flex items-center justify-center">
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       ) : (
-                        <div className="w-5 h-5 border-2 border-slate-300 rounded" />
+                        <div className="w-5 h-5 border-2 border-muted-foreground/30 rounded" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-slate-800 truncate">
+                      <h4 className="font-medium text-foreground truncate">
                         {doc.file_name}
                       </h4>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {(doc.file_size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
-                    <FileText className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                    <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                   </div>
                 </div>
               )

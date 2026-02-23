@@ -95,11 +95,11 @@ export default function GeneratingPage() {
   return (
     <div className="max-w-2xl mx-auto py-16 px-4">
       <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-slate-800 mb-2">Generating Your Quiz</h1>
-        <p className="text-slate-500">This usually takes 30-120 seconds</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Generating Your Quiz</h1>
+        <p className="text-muted-foreground">This usually takes 30-120 seconds</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm">
+      <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
         {/* Stage Steps */}
         <div className="space-y-4">
           {GENERATION_STAGES.map((stage, index) => {
@@ -117,7 +117,7 @@ export default function GeneratingPage() {
                     ? "bg-green-50 border border-green-200"
                     : isFailed
                     ? "bg-red-50 border border-red-200"
-                    : "bg-slate-50 border border-transparent"
+                    : "bg-muted border border-transparent"
                 }`}
               >
                 <div className="shrink-0">
@@ -128,7 +128,7 @@ export default function GeneratingPage() {
                   ) : isFailed ? (
                     <XCircle className="w-6 h-6 text-red-600" />
                   ) : (
-                    <div className="w-6 h-6 rounded-full border-2 border-slate-300" />
+                    <div className="w-6 h-6 rounded-full border-2 border-muted-foreground/30" />
                   )}
                 </div>
                 <span
@@ -139,7 +139,7 @@ export default function GeneratingPage() {
                       ? "text-green-800"
                       : isFailed
                       ? "text-red-800"
-                      : "text-slate-400"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {stage.label}

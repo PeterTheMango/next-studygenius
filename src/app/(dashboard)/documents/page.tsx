@@ -24,7 +24,7 @@ export default async function DocumentsPage() {
       
       {documents && documents.length > 0 && (
         <div>
-          <h3 className="font-semibold text-slate-800 mb-4">Your Library</h3>
+          <h3 className="font-semibold text-foreground mb-4">Your Library</h3>
           <DocumentList documents={documents} />
         </div>
       )}

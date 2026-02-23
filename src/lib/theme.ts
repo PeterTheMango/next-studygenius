@@ -175,6 +175,8 @@ function applyAppearanceMode(mode: AppearanceMode) {
   }
 }
 
+const THEME_STYLE_ID = "studygenius-theme-overrides";
+
 // Apply theme to document root
 export function applyTheme(preferences: ThemePreferences) {
   const root = document.documentElement;
@@ -205,35 +207,54 @@ export function applyTheme(preferences: ThemePreferences) {
     accent = preset.accent;
   }
 
-  // Convert hex to oklch and set the CSS variables that globals.css @theme inline reads
   const primaryOklch = hexToOklch(primary);
   const secondaryOklch = hexToOklch(secondary);
   const accentOklch = hexToOklch(accent);
+  const primaryFg = foregroundForHex(primary);
+  const secondaryFg = foregroundForHex(secondary);
+  const accentFg = foregroundForHex(accent);
 
-  // --primary, --secondary, --accent are consumed by the @theme inline block
-  root.style.setProperty("--primary", primaryOklch);
-  root.style.setProperty("--primary-foreground", foregroundForHex(primary));
-  root.style.setProperty("--secondary", secondaryOklch);
-  root.style.setProperty("--secondary-foreground", foregroundForHex(secondary));
-  root.style.setProperty("--accent", accentOklch);
-  root.style.setProperty("--accent-foreground", foregroundForHex(accent));
-  root.style.setProperty("--ring", primaryOklch);
-
-  // Sidebar mirrors primary
-  root.style.setProperty("--sidebar-primary", primaryOklch);
-  root.style.setProperty("--sidebar-primary-foreground", foregroundForHex(primary));
-  root.style.setProperty("--sidebar-accent", accentOklch);
-  root.style.setProperty("--sidebar-accent-foreground", foregroundForHex(accent));
-
-  // 3. Font family
+  // 3. Font
   const fontFamily =
     FONT_FAMILIES[preferences.fontFamily as FontFamilyKey] || FONT_FAMILIES.inter;
-  root.style.setProperty("font-family", fontFamily.value);
-
-  // 4. Font size (set on root so rem-based sizing cascades)
   const fontSize =
     FONT_SIZES[preferences.fontSize as FontSizeKey] || FONT_SIZES.medium;
-  root.style.fontSize = fontSize.value;
+
+  // Build a shared CSS block for the color vars.
+  // We scope it under both :root and .dark so it beats the defaults from globals.css
+  // regardless of light/dark mode. The `.dark` selector in globals.css has class specificity
+  // that beats `:root` inline styles, so we use a <style> tag with matching selectors.
+  const colorVars = `
+    --primary: ${primaryOklch};
+    --primary-foreground: ${primaryFg};
+    --secondary: ${secondaryOklch};
+    --secondary-foreground: ${secondaryFg};
+    --accent: ${accentOklch};
+    --accent-foreground: ${accentFg};
+    --ring: ${primaryOklch};
+    --sidebar-primary: ${primaryOklch};
+    --sidebar-primary-foreground: ${primaryFg};
+    --sidebar-accent: ${accentOklch};
+    --sidebar-accent-foreground: ${accentFg};
+  `;
+
+  const css = `
+    :root { ${colorVars} --font-family-theme: ${fontFamily.value}; --font-size-theme: ${fontSize.value}; }
+    .dark { ${colorVars} }
+  `;
+
+  // Inject or update a <style> element
+  let styleEl = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = THEME_STYLE_ID;
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = css;
+
+  // Also set on root inline for immediate specificity on non-dark vars
+  root.style.setProperty("--font-family-theme", fontFamily.value);
+  root.style.setProperty("--font-size-theme", fontSize.value);
 }
 
 // Hex color validation

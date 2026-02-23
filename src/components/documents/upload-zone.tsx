@@ -140,8 +140,8 @@ export function UploadZone() {
         onDrop={handleDrop}
         className={`relative border-2 border-dashed rounded-xl p-10 text-center transition-all duration-200 ease-in-out ${
           isDragging
-            ? 'border-blue-500 bg-blue-50 scale-[1.02]'
-            : 'border-slate-300 hover:border-slate-400 bg-white'
+            ? 'border-primary bg-primary/5 scale-[1.02]'
+            : 'border-border hover:border-muted-foreground/40 bg-card'
         }`}
       >
         <input
@@ -156,34 +156,34 @@ export function UploadZone() {
         {isBusy ? (
           <div className="flex flex-col items-center justify-center py-6">
             <div className="relative">
-              <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-bold text-blue-600">
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-bold text-primary">
                 AI
               </div>
             </div>
-            <p className="mt-4 text-lg font-medium text-slate-700">
+            <p className="mt-4 text-lg font-medium text-foreground">
                 {uploading ? "Uploading..." : "Analyzing Document..."}
             </p>
-            <p className="text-sm text-slate-500 mt-1">Extracting topics & preparing content</p>
-            <div className="w-64 h-2 bg-slate-100 rounded-full mt-4 overflow-hidden">
+            <p className="text-sm text-muted-foreground mt-1">Extracting topics & preparing content</p>
+            <div className="w-64 h-2 bg-muted rounded-full mt-4 overflow-hidden">
               <div
-                className="h-full bg-blue-600 transition-all duration-300"
+                className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
           </div>
         ) : (
           <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center group">
-            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
+            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
               <Upload className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-semibold text-slate-800 mb-2">
+            <h3 className="text-xl font-semibold text-foreground mb-2">
               Upload Study Material
             </h3>
-            <p className="text-slate-500 mb-6 max-w-sm">
+            <p className="text-muted-foreground mb-6 max-w-sm">
               Drag & drop your PDF lecture notes, textbooks, or papers here.
             </p>
-            <span className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-colors">
+            <span className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors">
               Select PDF File
             </span>
           </label>

@@ -337,7 +337,7 @@ export function QuestionCard({
                 className="w-full p-3 border rounded-md min-h-[100px] focus:ring-2 ring-primary/20 outline-none"
               />
                {showFeedback && (
-                   <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded">
+                   <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
                        <strong>Model Answer:</strong> {question.correctAnswer}
                    </div>
                )}
@@ -354,14 +354,14 @@ export function QuestionCard({
                     onDragStart={() => handleDragStart(idx)}
                     onDragOver={(e) => handleDragOver(e, idx)}
                     onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-3 p-3 border rounded-lg bg-white transition-all cursor-move ${
-                        draggedItemIndex === idx ? 'opacity-50 border-dashed border-blue-400 bg-blue-50' : 'hover:border-blue-200'
+                    className={`flex items-center gap-3 p-3 border rounded-lg bg-card transition-all cursor-move ${
+                        draggedItemIndex === idx ? 'opacity-50 border-dashed border-primary bg-primary/5' : 'hover:border-primary/30'
                     } ${disabled ? 'cursor-default' : ''}`}
                   >
-                      <div className="cursor-grab active:cursor-grabbing text-slate-400">
+                      <div className="cursor-grab active:cursor-grabbing text-muted-foreground">
                           <GripVertical className="w-5 h-5" />
                       </div>
-                      <span className="w-6 h-6 flex items-center justify-center bg-slate-100 rounded-full text-xs font-bold shrink-0">{idx+1}</span>
+                      <span className="w-6 h-6 flex items-center justify-center bg-muted rounded-full text-xs font-bold shrink-0">{idx+1}</span>
                       <span className="flex-1 select-none">{item}</span>
                   </div>
               ))}

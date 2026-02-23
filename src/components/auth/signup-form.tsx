@@ -72,13 +72,13 @@ export function SignupForm() {
   }
 
   return (
-    <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+    <div className="max-w-md w-full bg-card rounded-2xl shadow-xl p-8 border border-border">
       <div className="flex flex-col items-center mb-8">
-        <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-blue-600/20">
+        <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
           <Brain className="w-6 h-6 text-white" />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Create Account</h1>
-        <p className="text-slate-500">Join StudyGenius to master your topics</p>
+        <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
+        <p className="text-muted-foreground">Join StudyGenius to master your topics</p>
       </div>
 
       <Form {...form}>
@@ -88,14 +88,14 @@ export function SignupForm() {
             name="fullName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="block text-sm font-medium text-slate-700 mb-1">Full Name</FormLabel>
+                <FormLabel className="block text-sm font-medium text-foreground mb-1">Full Name</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
                       {...field}
                       type="text"
-                      className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-400"
+                      className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-muted-foreground"
                       placeholder="John Doe"
                     />
                   </div>
@@ -109,14 +109,14 @@ export function SignupForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="block text-sm font-medium text-slate-700 mb-1">Email Address</FormLabel>
+                <FormLabel className="block text-sm font-medium text-foreground mb-1">Email Address</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
                       {...field}
                       type="email"
-                      className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-400"
+                      className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-muted-foreground"
                       placeholder="you@example.com"
                     />
                   </div>
@@ -130,14 +130,14 @@ export function SignupForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="block text-sm font-medium text-slate-700 mb-1">Password</FormLabel>
+                <FormLabel className="block text-sm font-medium text-foreground mb-1">Password</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                     <input
                       {...field}
                       type="password"
-                      className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-slate-400"
+                      className="w-full pl-10 pr-4 py-3 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-muted-foreground"
                       placeholder="••••••••"
                     />
                   </div>
@@ -149,16 +149,16 @@ export function SignupForm() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:scale-100 cursor-pointer"
+            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:scale-100 cursor-pointer"
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Sign Up <ArrowRight className="w-5 h-5" /></>}
           </button>
         </form>
       </Form>
 
-      <div className="mt-6 text-center text-sm text-slate-500">
+      <div className="mt-6 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="font-bold text-blue-600 hover:text-blue-700">
+        <Link href="/login" className="font-bold text-primary hover:text-primary/80">
           Sign in
         </Link>
       </div>

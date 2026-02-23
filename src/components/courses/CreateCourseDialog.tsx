@@ -211,8 +211,8 @@ export function CreateCourseDialog({ open, onOpenChange }: CreateCourseDialogPro
                             onClick={() => field.onChange(icon.name)}
                             className={`relative h-16 rounded-lg border-2 transition-all hover:scale-105 flex items-center justify-center ${
                               field.value === icon.name
-                                ? "border-blue-500 bg-blue-50"
-                                : "border-slate-200 hover:border-slate-300"
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-muted-foreground/30"
                             }`}
                             title={icon.label}
                           >
@@ -220,8 +220,8 @@ export function CreateCourseDialog({ open, onOpenChange }: CreateCourseDialogPro
                               <IconComponent
                                 className={`w-6 h-6 ${
                                   field.value === icon.name
-                                    ? "text-blue-600"
-                                    : "text-slate-600"
+                                    ? "text-primary"
+                                    : "text-muted-foreground"
                                 }`}
                               />
                             )}

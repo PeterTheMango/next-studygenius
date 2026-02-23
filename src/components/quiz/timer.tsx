@@ -31,7 +31,7 @@ export function Timer({ totalSeconds, onTimeUp }: TimerProps) {
   };
 
   return (
-    <div className={`flex items-center gap-2 font-mono text-lg font-bold ${secondsLeft < 60 ? 'text-red-500' : 'text-slate-700'}`}>
+    <div className={`flex items-center gap-2 font-mono text-lg font-bold ${secondsLeft < 60 ? 'text-red-500' : 'text-foreground'}`}>
       <Clock className="w-5 h-5" />
       {formatTime(secondsLeft)}
     </div>

@@ -77,10 +77,10 @@ export function CourseQuizzesTab({ courseId }: CourseQuizzesTabProps) {
   if (quizzes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="p-6 bg-slate-50 rounded-full mb-4">
-          <BookOpen className="w-12 h-12 text-slate-400" />
+        <div className="p-6 bg-muted rounded-full mb-4">
+          <BookOpen className="w-12 h-12 text-muted-foreground" />
         </div>
-        <h3 className="text-xl font-semibold text-slate-800 mb-2">
+        <h3 className="text-xl font-semibold text-foreground mb-2">
           No quizzes in this course
         </h3>
         <p className="text-muted-foreground mb-6 max-w-sm">
@@ -96,14 +96,14 @@ export function CourseQuizzesTab({ courseId }: CourseQuizzesTabProps) {
         <div
           key={quiz.id}
           onClick={() => router.push(`/quizzes/${quiz.id}`)}
-          className="group bg-white p-4 rounded-lg border border-slate-200 hover:border-blue-400 hover:shadow-md cursor-pointer transition-all flex items-center justify-between"
+          className="group bg-card p-4 rounded-lg border border-border hover:border-primary hover:shadow-md cursor-pointer transition-all flex items-center justify-between"
         >
           <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:scale-110 transition-transform shrink-0">
+            <div className="p-2 bg-primary/10 text-primary rounded-lg group-hover:scale-110 transition-transform shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-slate-800 truncate">
+              <h4 className="font-bold text-foreground truncate">
                 {quiz.title}
               </h4>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -114,12 +114,12 @@ export function CourseQuizzesTab({ courseId }: CourseQuizzesTabProps) {
                   {quiz.status?.toUpperCase() || 'DRAFT'}
                 </Badge>
                 {quiz.question_count && (
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-muted-foreground">
                     {quiz.question_count} questions
                   </span>
                 )}
-                <span className="text-xs text-slate-400">•</span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">
                   {quiz.document.file_name}
                 </span>
               </div>
@@ -132,13 +132,13 @@ export function CourseQuizzesTab({ courseId }: CourseQuizzesTabProps) {
                   e.stopPropagation()
                   router.push(`/quizzes/${quiz.id}/take`)
                 }}
-                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 title="Start Quiz"
               >
                 <Play className="w-4 h-4" />
               </button>
             )}
-            <ArrowUpRight className="w-4 h-4 text-blue-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            <ArrowUpRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </div>
         </div>
       ))}
