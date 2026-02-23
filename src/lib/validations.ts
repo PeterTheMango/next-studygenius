@@ -60,7 +60,7 @@ export const UpdatePreferencesSchema = z.object({
 
 export const UploadAvatarSchema = z.object({
   file: z.instanceof(File)
-    .refine((file) => file.size <= 2 * 1024 * 1024, "File size must be less than 2MB")
+    .refine((file) => file.size <= 50 * 1024 * 1024, "File size must be less than 50MB")
     .refine(
       (file) => ["image/jpeg", "image/png", "image/webp"].includes(file.type),
       "File must be a JPEG, PNG, or WebP image"
