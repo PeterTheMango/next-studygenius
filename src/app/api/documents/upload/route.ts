@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { fileName, fileSize } = await request.json();
+    const { fileName, fileSize, batchId } = await request.json();
 
     // Validate
     if (!fileName || typeof fileName !== "string" || !fileName.toLowerCase().endsWith(".pdf")) {
@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
         file_path: path,
         file_size: fileSize,
         status: "pending",
+        ...(batchId ? { batch_id: batchId } : {}),
       })
       .select()
       .single();

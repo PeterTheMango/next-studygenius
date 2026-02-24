@@ -79,10 +79,12 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
   }
 
-  // Verify service role auth
+  // Verify service role auth — accept both new-format (sb_secret_...) and legacy JWT keys
   const authHeader = req.headers.get("Authorization");
-  const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!authHeader || !authHeader.includes(expectedKey ?? "MISSING")) {
+  const token = authHeader?.replace(/^Bearer\s+/i, "") ?? "";
+  const newKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const legacyKey = Deno.env.get("LEGACY_SERVICE_ROLE_KEY") ?? "";
+  if (!token || (token !== newKey && token !== legacyKey)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 

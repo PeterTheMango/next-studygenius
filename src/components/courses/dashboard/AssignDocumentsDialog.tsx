@@ -44,12 +44,10 @@ export function AssignDocumentsDialog({
   const fetchAvailableDocuments = async () => {
     setLoading(true)
     try {
-      // Fetch all user documents
       const response = await fetch("/api/documents")
       if (!response.ok) throw new Error("Failed to fetch documents")
 
       const result = await response.json()
-      // Filter out documents already assigned to this course
       const availableDocs = (result.data || []).filter(
         (doc: Document) => doc.course_id !== courseId && doc.status === 'ready'
       )
@@ -117,93 +115,106 @@ export function AssignDocumentsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Add Documents to Course</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-4 md:px-6 md:pt-6">
+          <DialogTitle className="text-lg">Add Documents</DialogTitle>
+          <DialogDescription className="text-sm">
             Select documents to add to this course
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        {/* Search */}
+        <div className="relative px-5 pb-3 md:px-6">
+          <Search className="absolute left-8 md:left-9 top-1/2 -translate-y-[calc(50%+6px)] w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
             type="text"
             placeholder="Search documents..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-9 h-9 text-sm"
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-2 min-h-[300px]">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">Loading documents...</p>
-            </div>
-          ) : filteredDocuments.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="w-12 h-12 text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">
-                {searchQuery
-                  ? "No documents found matching your search"
-                  : "No available documents to assign"}
-              </p>
-            </div>
-          ) : (
-            filteredDocuments.map((doc) => {
-              const isSelected = selectedDocuments.has(doc.id)
-              return (
-                <div
-                  key={doc.id}
-                  onClick={() => toggleDocument(doc.id)}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
+        {/* Document list */}
+        <div className="flex-1 overflow-y-auto px-5 pb-2 md:px-6 min-h-[260px] max-h-[400px]">
+          <div className="space-y-1.5">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <p className="text-sm text-muted-foreground">Loading documents...</p>
+              </div>
+            ) : filteredDocuments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="p-4 bg-muted/50 rounded-2xl mb-3">
+                  <FileText className="w-8 h-8 text-muted-foreground/50" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {searchQuery
+                    ? "No documents found"
+                    : "No available documents"}
+                </p>
+              </div>
+            ) : (
+              filteredDocuments.map((doc) => {
+                const isSelected = selectedDocuments.has(doc.id)
+                return (
+                  <div
+                    key={doc.id}
+                    onClick={() => toggleDocument(doc.id)}
+                    className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150 ${
+                      isSelected
+                        ? "border-primary/50 bg-primary/[0.04]"
+                        : "border-transparent hover:bg-accent/50"
+                    }`}
+                  >
+                    {/* Checkbox */}
+                    <div className="shrink-0">
                       {isSelected ? (
-                        <div className="w-5 h-5 bg-primary rounded flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
+                        <div className="w-5 h-5 bg-primary rounded-md flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5 text-primary-foreground" />
                         </div>
                       ) : (
-                        <div className="w-5 h-5 border-2 border-muted-foreground/30 rounded" />
+                        <div className="w-5 h-5 border-2 border-border rounded-md transition-colors" />
                       )}
                     </div>
+
+                    {/* Doc info */}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-foreground truncate">
+                      <h4 className="text-sm font-medium text-foreground truncate">
                         {doc.file_name}
                       </h4>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
                         {(doc.file_size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
-                    <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+
+                    <FileText className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                   </div>
-                </div>
-              )
-            })
-          )}
+                )
+              })
+            )}
+          </div>
         </div>
 
-        <div className="flex justify-between items-center pt-4 border-t">
-          <p className="text-sm text-muted-foreground">
-            {selectedDocuments.size} document{selectedDocuments.size !== 1 ? "s" : ""}{" "}
-            selected
+        {/* Footer */}
+        <div className="flex items-center justify-between px-5 py-4 md:px-6 border-t border-border bg-muted/30">
+          <p className="text-xs text-muted-foreground">
+            {selectedDocuments.size} selected
           </p>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={() => onOpenChange(false)}
               disabled={assigning}
             >
               Cancel
             </Button>
-            <Button onClick={handleAssign} disabled={assigning || selectedDocuments.size === 0}>
-              {assigning ? "Assigning..." : "Add to Course"}
+            <Button
+              size="sm"
+              onClick={handleAssign}
+              disabled={assigning || selectedDocuments.size === 0}
+            >
+              {assigning ? "Adding..." : "Add to Course"}
             </Button>
           </div>
         </div>

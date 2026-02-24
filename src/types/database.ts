@@ -85,6 +85,12 @@ export interface Database {
           file_size: number
           page_count: number | null
           status: 'pending' | 'processing' | 'ready' | 'failed' | null
+          processing_stage: string | null
+          error_stage: string | null
+          retry_count: number
+          processing_started_at: string | null
+          processing_completed_at: string | null
+          batch_id: string | null
           extracted_text: string | null
           topics: Json | null
           page_metadata: Json | null
@@ -104,6 +110,12 @@ export interface Database {
           file_size: number
           page_count?: number | null
           status?: 'pending' | 'processing' | 'ready' | 'failed' | null
+          processing_stage?: string | null
+          error_stage?: string | null
+          retry_count?: number
+          processing_started_at?: string | null
+          processing_completed_at?: string | null
+          batch_id?: string | null
           extracted_text?: string | null
           topics?: Json | null
           page_metadata?: Json | null
@@ -123,6 +135,12 @@ export interface Database {
           file_size?: number
           page_count?: number | null
           status?: 'pending' | 'processing' | 'ready' | 'failed' | null
+          processing_stage?: string | null
+          error_stage?: string | null
+          retry_count?: number
+          processing_started_at?: string | null
+          processing_completed_at?: string | null
+          batch_id?: string | null
           extracted_text?: string | null
           topics?: Json | null
           page_metadata?: Json | null
@@ -133,6 +151,38 @@ export interface Database {
           cleaned_data?: string | null
           created_at?: string | null
           updated_at?: string | null
+        }
+      }
+      document_batches: {
+        Row: {
+          id: string
+          user_id: string
+          status: 'processing' | 'completed' | 'partial' | 'failed'
+          total_count: number
+          completed_count: number
+          failed_count: number
+          created_at: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          status?: 'processing' | 'completed' | 'partial' | 'failed'
+          total_count: number
+          completed_count?: number
+          failed_count?: number
+          created_at?: string | null
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          status?: 'processing' | 'completed' | 'partial' | 'failed'
+          total_count?: number
+          completed_count?: number
+          failed_count?: number
+          created_at?: string | null
+          completed_at?: string | null
         }
       }
       quizzes: {

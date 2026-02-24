@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { extractTopics } from "@/lib/gemini/question-generator";
 import { filterPDFPages } from "@/lib/pdf/filter-pipeline";
 
+/**
+ * @deprecated Use POST /api/documents/[id]/confirm-upload instead.
+ * This synchronous processing route is kept temporarily for backward compatibility.
+ * New uploads should use the async flow: upload → confirm-upload → poll status.
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();

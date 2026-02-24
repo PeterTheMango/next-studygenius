@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Archive, MoreVertical, Pencil, Trash2, BookOpen, FileText, Trophy } from "lucide-react"
+import { Archive, MoreVertical, Trash2, BookOpen, ArrowUpRight } from "lucide-react"
 import { Course } from "@/types/course"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -17,9 +17,10 @@ import * as LucideIcons from "lucide-react"
 
 interface CourseCardProps {
   course: Course
+  variant?: "card" | "list"
 }
 
-export function CourseCard({ course }: CourseCardProps) {
+export function CourseCard({ course, variant = "card" }: CourseCardProps) {
   const router = useRouter()
   const { updateCourse, removeCourse } = useCourseStore()
 
@@ -44,7 +45,7 @@ export function CourseCard({ course }: CourseCardProps) {
       toast.success(
         newStatus === "archived" ? "Course archived" : "Course restored"
       )
-    } catch (error) {
+    } catch {
       toast.error("Failed to update course")
     }
   }
@@ -68,117 +69,170 @@ export function CourseCard({ course }: CourseCardProps) {
 
       removeCourse(course.id)
       toast.success("Course deleted")
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete course")
     }
   }
 
-  // Get the icon component dynamically
   const IconComponent = (LucideIcons as any)[
     course.icon
       .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
       .join("")
   ] as React.ComponentType<{ className?: string }> || BookOpen
 
+  const menuContent = (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        onClick={(e) => e.stopPropagation()}
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+      >
+        <MoreVertical className="w-4 h-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onClick={() => router.push(`/courses/${course.id}`)}>
+          <BookOpen className="w-4 h-4 mr-2" />
+          View Dashboard
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleArchive}>
+          <Archive className="w-4 h-4 mr-2" />
+          {course.status === "active" ? "Archive" : "Restore"}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={handleDelete}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
+  // ── List variant ──
+  if (variant === "list") {
+    return (
+      <div
+        onClick={() => router.push(`/courses/${course.id}`)}
+        className="group bg-card rounded-xl border border-border hover:border-primary/50 hover:shadow-md hover:shadow-primary/5 cursor-pointer transition-all duration-200 overflow-hidden"
+      >
+        <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4">
+          {/* Color bar */}
+          <div
+            className="w-1 self-stretch rounded-full shrink-0"
+            style={{ backgroundColor: course.color }}
+          />
+
+          {/* Icon */}
+          <div
+            className="p-2 sm:p-2.5 rounded-xl shrink-0 transition-transform duration-200 group-hover:scale-105"
+            style={{
+              backgroundColor: `${course.color}15`,
+              color: course.color,
+            }}
+          >
+            <IconComponent className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-foreground truncate text-sm sm:text-base">
+                {course.title}
+              </h4>
+              <Badge variant="outline" className="text-xs shrink-0 hidden sm:inline-flex">
+                {course.course_code}
+              </Badge>
+              {course.status === "archived" && (
+                <Badge variant="secondary" className="text-xs shrink-0">
+                  Archived
+                </Badge>
+              )}
+            </div>
+            {course.description && (
+              <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">
+                {course.description}
+              </p>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+            {menuContent}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Card variant ──
   return (
     <div
       onClick={() => router.push(`/courses/${course.id}`)}
-      className="group bg-card p-6 rounded-2xl border border-border hover:border-primary hover:shadow-lg cursor-pointer transition-all relative overflow-hidden"
+      className="group bg-card rounded-2xl border border-border hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 cursor-pointer transition-all duration-200 relative overflow-hidden h-full flex flex-col"
     >
-      {/* Color accent bar */}
+      {/* Color accent — top edge */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-1"
+        className="h-1 w-full"
         style={{ backgroundColor: course.color }}
       />
 
-      {/* Actions menu */}
-      <div className="absolute top-4 right-4 z-10">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            onClick={(e) => e.stopPropagation()}
-            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => router.push(`/courses/${course.id}`)}
+      <div className="p-5 sm:p-6 flex flex-col flex-1">
+        {/* Top row: icon + badge + menu */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="p-2.5 rounded-xl transition-transform duration-200 group-hover:scale-110"
+              style={{
+                backgroundColor: `${course.color}12`,
+                color: course.color,
+              }}
             >
-              <BookOpen className="w-4 h-4 mr-2" />
-              View Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleArchive}>
-              <Archive className="w-4 h-4 mr-2" />
-              {course.status === "active" ? "Archive" : "Restore"}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleDelete}
-              className="text-red-600 focus:text-red-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Icon and code */}
-      <div className="flex items-start justify-between mb-4 pl-4">
-        <div
-          className="p-3 rounded-xl group-hover:scale-110 transition-transform"
-          style={{
-            backgroundColor: `${course.color}15`,
-            color: course.color,
-          }}
-        >
-          <IconComponent className="w-6 h-6" />
-        </div>
-        <Badge variant="outline" className="mr-8">
-          {course.course_code}
-        </Badge>
-      </div>
-
-      {/* Title and description */}
-      <div className="pl-4">
-        <div className="flex items-center gap-2 mb-2">
-          <h4 className="font-bold text-foreground truncate flex-1 pr-6">
-            {course.title}
-          </h4>
+              <IconComponent className="w-5 h-5" />
+            </div>
+            <Badge variant="outline" className="text-xs font-medium">
+              {course.course_code}
+            </Badge>
+          </div>
+          <div onClick={(e) => e.stopPropagation()}>
+            {menuContent}
+          </div>
         </div>
 
-        {course.description && (
-          <p className="text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[2.5rem]">
-            {course.description}
-          </p>
-        )}
+        {/* Title */}
+        <h4 className="font-bold text-foreground leading-snug mb-1.5 line-clamp-1">
+          {course.title}
+        </h4>
 
-        {!course.description && (
-          <div className="mb-4 min-h-[2.5rem]" />
-        )}
+        {/* Description */}
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] mb-4 flex-1">
+          {course.description || "No description"}
+        </p>
 
-        {/* Status badge */}
-        {course.status === "archived" && (
-          <Badge variant="secondary" className="mb-4">
-            Archived
-          </Badge>
-        )}
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-3 border-t border-border">
+          {course.status === "archived" ? (
+            <Badge variant="secondary" className="text-xs">
+              Archived
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground font-medium">
+              {new Date(course.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
+          )}
 
-        {/* View dashboard link */}
-        <div className="text-sm font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1"
-          style={{ color: course.color }}
-        >
-          View Dashboard
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            strokeWidth="2"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          <span
+            className="text-xs font-semibold inline-flex items-center gap-1 transition-transform duration-200 group-hover:translate-x-0.5"
+            style={{ color: course.color }}
           >
-            <path d="M7 17L17 7M17 7H7M17 7V17" />
-          </svg>
+            Open
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </span>
         </div>
       </div>
     </div>

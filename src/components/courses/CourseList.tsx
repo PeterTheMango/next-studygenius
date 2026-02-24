@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { CourseCard } from "./CourseCard"
 import { Course, CourseStatusFilter } from "@/types/course"
 import { Input } from "@/components/ui/input"
-import { Search, LayoutGrid, List, Plus } from "lucide-react"
+import { Search, LayoutGrid, List, Plus, GraduationCap } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -30,12 +30,10 @@ export default function CourseList({ initialCourses }: CourseListProps) {
   const filteredCourses = useMemo(() => {
     let filtered = courses
 
-    // Filter by status
     if (statusFilter !== "all") {
       filtered = filtered.filter((course) => course.status === statusFilter)
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter((course) => {
@@ -52,141 +50,136 @@ export default function CourseList({ initialCourses }: CourseListProps) {
   const activeCourses = courses.filter((c) => c.status === "active").length
   const archivedCourses = courses.filter((c) => c.status === "archived").length
 
+  const statusFilters: { key: CourseStatusFilter; label: string; count: number }[] = [
+    { key: "all", label: "All", count: courses.length },
+    { key: "active", label: "Active", count: activeCourses },
+    { key: "archived", label: "Archived", count: archivedCourses },
+  ]
+
   if (courses.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="p-6 bg-muted rounded-full mb-4">
-          <LayoutGrid className="w-12 h-12 text-muted-foreground" />
+      <>
+        <div className="bg-card border border-border border-dashed rounded-2xl p-8 sm:p-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <GraduationCap className="w-7 h-7 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-1.5">
+            No courses yet
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+            Create your first course to organize your study materials by subject or class.
+          </p>
+          <Button onClick={() => setCreateDialogOpen(true)} size="default">
+            <Plus className="w-4 h-4" />
+            Create Course
+          </Button>
         </div>
-        <h3 className="text-xl font-semibold text-foreground mb-2">
-          No courses yet
-        </h3>
-        <p className="text-muted-foreground mb-6 max-w-sm">
-          Create your first course to organize your study materials by subject or class
-        </p>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Course
-        </Button>
         <CreateCourseDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300" style={{ animationDelay: '200ms', animationFillMode: 'backwards' }}>
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
             type="text"
-            placeholder="Search by course name, code, or description..."
+            placeholder="Search courses..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
-        <ToggleGroup
-          type="single"
-          value={viewMode}
-          onValueChange={(value) => value && setViewMode(value as "card" | "list")}
-          className="border rounded-md"
-        >
-          <ToggleGroupItem value="card" aria-label="Card view">
-            <LayoutGrid className="h-4 w-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem value="list" aria-label="List view">
-            <List className="h-4 w-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Course
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setStatusFilter("all")}
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            statusFilter === "all"
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-accent"
-          }`}
-        >
-          All ({courses.length})
-        </button>
-        <button
-          onClick={() => setStatusFilter("active")}
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            statusFilter === "active"
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-accent"
-          }`}
-        >
-          Active ({activeCourses})
-        </button>
-        <button
-          onClick={() => setStatusFilter("archived")}
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            statusFilter === "archived"
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-accent"
-          }`}
-        >
-          Archived ({archivedCourses})
-        </button>
-      </div>
-
-      {viewMode === "card" ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredCourses.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
+        <div className="flex items-center gap-2">
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value) => value && setViewMode(value as "card" | "list")}
+            className="border border-border rounded-lg"
+          >
+            <ToggleGroupItem value="card" aria-label="Card view" className="px-2.5">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="List view" className="px-2.5">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="shrink-0">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">New Course</span>
+          </Button>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {filteredCourses.map((course) => (
-            <div
-              key={course.id}
-              className="group bg-card p-4 rounded-lg border border-border hover:border-primary hover:shadow-md cursor-pointer transition-all"
-              onClick={() => window.location.href = `/courses/${course.id}`}
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
+        {statusFilters.map((filter) => (
+          <button
+            key={filter.key}
+            onClick={() => setStatusFilter(filter.key)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              statusFilter === filter.key
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            }`}
+          >
+            {filter.label}
+            <span
+              className={`text-xs tabular-nums px-1.5 py-0.5 rounded-md ${
+                statusFilter === filter.key
+                  ? "bg-primary/10 text-primary"
+                  : "bg-muted text-muted-foreground"
+              }`}
             >
-              <div className="flex items-center gap-4">
-                <div
-                  className="w-1 h-12 rounded-full"
-                  style={{ backgroundColor: course.color }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-foreground truncate">
-                      {course.title}
-                    </h4>
-                    <Badge variant="outline" className="text-xs">
-                      {course.course_code}
-                    </Badge>
-                    {course.status === "archived" && (
-                      <Badge variant="secondary" className="text-xs">
-                        Archived
-                      </Badge>
-                    )}
-                  </div>
-                  {course.description && (
-                    <p className="text-sm text-muted-foreground truncate mt-1">
-                      {course.description}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+              {filter.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
-      {filteredCourses.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">
-            No courses found matching your search.
+      {/* Course Grid / List */}
+      {filteredCourses.length > 0 ? (
+        viewMode === "card" ? (
+          <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredCourses.map((course, index) => (
+              <div
+                key={course.id}
+                className="animate-in fade-in slide-in-from-bottom-3 duration-300"
+                style={{
+                  animationDelay: `${index * 50}ms`,
+                  animationFillMode: "backwards",
+                }}
+              >
+                <CourseCard course={course} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredCourses.map((course, index) => (
+              <div
+                key={course.id}
+                className="animate-in fade-in slide-in-from-bottom-2 duration-200"
+                style={{
+                  animationDelay: `${index * 30}ms`,
+                  animationFillMode: "backwards",
+                }}
+              >
+                <CourseCard course={course} variant="list" />
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="bg-card border border-border rounded-2xl p-8 text-center">
+          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+            <Search className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            No courses found matching &ldquo;{searchQuery}&rdquo;
           </p>
         </div>
       )}

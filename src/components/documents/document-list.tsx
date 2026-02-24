@@ -30,7 +30,6 @@ export function DocumentList({ documents }: DocumentListProps) {
     return documents.filter((doc) => {
       const fileNameMatch = doc.file_name.toLowerCase().includes(query)
 
-      // Search in topics if they exist
       let topicsMatch = false
       if (doc.topics && Array.isArray(doc.topics)) {
         topicsMatch = doc.topics.some((topic: any) => {
@@ -74,94 +73,117 @@ export function DocumentList({ documents }: DocumentListProps) {
   }
 
   if (documents.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">No documents found. Upload one to get started.</p>
-      </div>
-    )
+    return null
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
             type="text"
-            placeholder="Search by document name or tags..."
+            placeholder="Search documents or topics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-9 h-9 text-sm bg-card"
           />
         </div>
         <ToggleGroup
           type="single"
           value={viewMode}
           onValueChange={(value) => value && setViewMode(value as "card" | "list")}
-          className="border rounded-md"
+          className="border border-border rounded-lg bg-card shrink-0"
         >
-          <ToggleGroupItem value="card" aria-label="Card view">
-            <LayoutGrid className="h-4 w-4" />
+          <ToggleGroupItem value="card" aria-label="Card view" className="h-9 w-9 p-0">
+            <LayoutGrid className="h-3.5 w-3.5" />
           </ToggleGroupItem>
-          <ToggleGroupItem value="list" aria-label="List view">
-            <List className="h-4 w-4" />
+          <ToggleGroupItem value="list" aria-label="List view" className="h-9 w-9 p-0">
+            <List className="h-3.5 w-3.5" />
           </ToggleGroupItem>
         </ToggleGroup>
       </div>
 
+      {/* Card View */}
       {viewMode === "card" ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredDocuments.map((doc) => (
             <DocumentCard key={doc.id} document={doc} />
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        /* List View */
+        <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
           {filteredDocuments.map((doc) => {
             const topics = parseTopics(doc)
+            const createdDate = doc.created_at
+              ? new Date(doc.created_at).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                })
+              : null
+
             return (
               <div
                 key={doc.id}
                 onClick={() => router.push(`/documents/${doc.id}`)}
-                className="group bg-card p-4 rounded-lg border border-border hover:border-primary hover:shadow-md cursor-pointer transition-all flex items-center justify-between"
+                className="
+                  group flex items-center gap-3 sm:gap-4 px-4 py-3.5
+                  hover:bg-accent/50 cursor-pointer transition-colors
+                "
               >
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="p-2 bg-primary/10 text-primary rounded-lg group-hover:scale-110 transition-transform shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-foreground truncate">
-                      {doc.file_name}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      {topics.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {topics.slice(0, 3).map((topic, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-md">
-                              {topic}
-                            </span>
-                          ))}
-                          {topics.length > 3 && (
-                            <span className="text-xs text-muted-foreground">+{topics.length - 3} more</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground italic">No topics</span>
-                      )}
-                    </div>
+                {/* Icon */}
+                <div className="p-2 bg-primary/10 text-primary rounded-lg group-hover:scale-105 transition-transform shrink-0">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-foreground text-sm truncate">
+                    {doc.file_name}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {(doc.file_size / 1024 / 1024).toFixed(1)} MB
+                    </span>
+                    {createdDate && (
+                      <>
+                        <span className="text-muted-foreground/40 text-xs">·</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{createdDate}</span>
+                      </>
+                    )}
+                    {/* Topics on desktop */}
+                    {topics.length > 0 && (
+                      <div className="hidden sm:flex items-center gap-1 ml-1">
+                        <span className="text-muted-foreground/40 text-xs">·</span>
+                        {topics.slice(0, 2).map((topic, i) => (
+                          <span key={i} className="px-1.5 py-0.5 bg-muted text-muted-foreground text-[11px] font-medium rounded">
+                            {topic}
+                          </span>
+                        ))}
+                        {topics.length > 2 && (
+                          <span className="text-[11px] text-muted-foreground/50">+{topics.length - 2}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {(doc.file_size / 1024 / 1024).toFixed(2)} MB
-                  </span>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={(e) => handleDelete(e, doc.id)}
-                    className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                    className="
+                      p-1.5 rounded-lg
+                      text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10
+                      opacity-0 group-hover:opacity-100
+                      transition-all duration-200
+                    "
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                  <ArrowUpRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                  <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200" />
                 </div>
               </div>
             )
@@ -169,12 +191,18 @@ export function DocumentList({ documents }: DocumentListProps) {
         </div>
       )}
 
+      {/* Empty search state */}
       {filteredDocuments.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No documents found matching your search.</p>
+        <div className="text-center py-10">
+          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+            <Search className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium text-foreground mb-1">No results found</p>
+          <p className="text-xs text-muted-foreground">
+            Try a different search term or clear the filter.
+          </p>
         </div>
       )}
     </div>
   )
 }
-

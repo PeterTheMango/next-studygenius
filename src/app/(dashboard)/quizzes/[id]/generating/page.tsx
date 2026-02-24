@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Loader2, CheckCircle2, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { ProcessingStages } from "@/components/shared/processing-stages";
 
 const GENERATION_STAGES = [
   { key: "queued", label: "Preparing..." },
@@ -88,10 +89,6 @@ export default function GeneratingPage() {
     }
   };
 
-  const currentStageIndex = GENERATION_STAGES.findIndex(
-    (s) => s.key === (quizStatus?.status || quizStatus?.generation_stage)
-  );
-
   return (
     <div className="max-w-2xl mx-auto py-16 px-4">
       <div className="text-center mb-12">
@@ -100,64 +97,20 @@ export default function GeneratingPage() {
       </div>
 
       <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
-        {/* Stage Steps */}
-        <div className="space-y-4">
-          {GENERATION_STAGES.map((stage, index) => {
-            const isComplete = quizStatus?.status === "ready" || (currentStageIndex > index);
-            const isCurrent = currentStageIndex === index && ACTIVE_STATUSES.has(quizStatus?.status ?? "");
-            const isFailed = quizStatus?.status === "failed" && quizStatus?.error_stage === stage.key;
-
-            return (
-              <div
-                key={stage.key}
-                className={`flex items-center gap-4 p-4 rounded-xl transition-all ${
-                  isCurrent
-                    ? "bg-blue-50 border border-blue-200"
-                    : isComplete
-                    ? "bg-green-50 border border-green-200"
-                    : isFailed
-                    ? "bg-red-50 border border-red-200"
-                    : "bg-muted border border-transparent"
-                }`}
-              >
-                <div className="shrink-0">
-                  {isComplete ? (
-                    <CheckCircle2 className="w-6 h-6 text-green-600" />
-                  ) : isCurrent ? (
-                    <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                  ) : isFailed ? (
-                    <XCircle className="w-6 h-6 text-red-600" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full border-2 border-muted-foreground/30" />
-                  )}
-                </div>
-                <span
-                  className={`font-medium ${
-                    isCurrent
-                      ? "text-blue-800"
-                      : isComplete
-                      ? "text-green-800"
-                      : isFailed
-                      ? "text-red-800"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {stage.label}
-                </span>
-              </div>
-            );
-          })}
-
-          {/* Ready state */}
-          {quizStatus?.status === "ready" && (
-            <div className="flex items-center gap-4 p-4 rounded-xl bg-green-50 border border-green-200">
-              <CheckCircle2 className="w-6 h-6 text-green-600 shrink-0" />
-              <span className="font-medium text-green-800">
-                Quiz ready! Redirecting... ({quizStatus.question_count} questions)
-              </span>
-            </div>
-          )}
-        </div>
+        <ProcessingStages
+          stages={[...GENERATION_STAGES]}
+          currentStatus={quizStatus?.status ?? null}
+          currentStage={quizStatus?.generation_stage ?? null}
+          errorStage={quizStatus?.error_stage ?? null}
+          activeStatuses={ACTIVE_STATUSES}
+          completedStatus="ready"
+          failedStatus="failed"
+          completionMessage={
+            quizStatus?.question_count
+              ? `Quiz ready! Redirecting... (${quizStatus.question_count} questions)`
+              : "Quiz ready! Redirecting..."
+          }
+        />
 
         {/* Failed state */}
         {quizStatus?.status === "failed" && (

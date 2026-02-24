@@ -1,27 +1,16 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { MobileSidebar } from "./mobile-sidebar";
+import { SearchCommand } from "./search-command";
 
 export function Navbar({ user }: { user: any }) {
-  const pathname = usePathname();
-
-  const getTitle = () => {
-    if (pathname === "/dashboard") return "Dashboard";
-    if (pathname.startsWith("/documents")) return "Documents";
-    if (pathname.startsWith("/quizzes")) return "Quizzes";
-    if (pathname.startsWith("/courses")) return "Courses";
-    if (pathname.startsWith("/settings")) return "Settings";
-    return "StudyGenius";
-  };
-
   return (
     <header className="bg-card border-b border-border px-4 md:px-8 py-4 sticky top-0 z-20 flex justify-between items-center">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-1">
         <MobileSidebar user={user} />
-        <h1 className="hidden md:block text-xl font-semibold text-foreground capitalize">
-          {getTitle()}
-        </h1>
+        <div className="hidden md:block flex-1 max-w-sm">
+          <SearchCommand />
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
