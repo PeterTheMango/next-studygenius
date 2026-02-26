@@ -1166,11 +1166,11 @@ export function QuizPlayer({
 
         {/* Retry Round Banner */}
         {isRetryRound && (
-          <Card className="p-3 sm:p-4 bg-accent/50 border-primary/20">
+          <Card className="p-3 sm:p-4 bg-card border-primary/25">
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-primary/10 rounded-md">
+                  <div className="p-1.5 bg-primary/15 rounded-md">
                     <RefreshCw className="w-3.5 h-3.5 text-primary" />
                   </div>
                   <span className="text-sm font-semibold text-foreground">
@@ -1192,7 +1192,7 @@ export function QuizPlayer({
                   return (
                     <div key={q.id} className="flex items-center gap-2">
                       <div className="flex-1 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-1.5 flex-1 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
                           <div
                             className={`h-full transition-all duration-500 rounded-full ${
                               isMastered ? "bg-chart-2" : "bg-primary"
@@ -1271,14 +1271,14 @@ export function QuizPlayer({
 
         {/* Progress */}
         {mode === "test" ? (
-          <div className="h-1.5 sm:h-2 w-full bg-secondary rounded-full overflow-hidden">
+          <div className="h-1.5 sm:h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
             <div
               className="bg-primary h-full transition-all duration-500 ease-in-out rounded-full"
               style={{ width: `${progress}%` }}
             />
           </div>
         ) : (
-          <div className="h-1.5 sm:h-2 w-full bg-secondary rounded-full overflow-hidden flex">
+          <div className="h-1.5 sm:h-2 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden flex">
             <div
               className="bg-chart-2 h-full transition-all duration-500 ease-in-out"
               style={{
