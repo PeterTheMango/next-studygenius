@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { AlertCircle, PlayCircle, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,9 +40,11 @@ export function ResumeQuizBanner({
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffMins < 60)
+      return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   };
 
   const handleRestart = async () => {
@@ -53,7 +56,6 @@ export function ResumeQuizBanner({
 
     setIsRestarting(true);
     try {
-      // Call API to abandon current attempt and create new one
       const res = await fetch(`/api/quizzes/${quizId}/abandon`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -73,31 +75,55 @@ export function ResumeQuizBanner({
     }
   };
 
+  const progressPercent = Math.round((answeredCount / totalQuestions) * 100);
+
   return (
-    <Card className="bg-blue-500/10 border-blue-500 p-4 mb-6 relative">
+    <Card className="bg-chart-2/8 border-chart-2/25 p-4 sm:p-5 relative overflow-hidden">
+      {/* Dismiss button */}
       <button
         onClick={() => setIsDismissed(true)}
-        className="absolute top-2 right-2 p-1 hover:bg-blue-500/20 rounded"
+        className="absolute top-2.5 right-2.5 p-1 hover:bg-chart-2/15 rounded-md transition-colors"
         aria-label="Dismiss"
       >
-        <X className="w-4 h-4 text-blue-500" />
+        <X className="w-4 h-4 text-chart-2" />
       </button>
 
       <div className="flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
-        <div className="flex-1">
-          <p className="font-medium text-blue-500">Resume In-Progress Quiz</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            You have an unfinished attempt with <strong>{answeredCount}/{totalQuestions}</strong> questions answered.
-            Last activity was <strong>{formatTimeAgo(lastAnsweredAt)}</strong>.
+        <div className="p-2 bg-chart-2/15 rounded-lg shrink-0 mt-0.5">
+          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-chart-2" />
+        </div>
+        <div className="flex-1 min-w-0 pr-6">
+          <p className="font-semibold text-sm sm:text-base text-foreground">
+            Resume In-Progress Quiz
           </p>
-          <div className="flex gap-3 mt-3">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            You have an unfinished attempt with{" "}
+            <strong className="text-foreground">
+              {answeredCount}/{totalQuestions}
+            </strong>{" "}
+            questions answered. Last activity was{" "}
+            <strong className="text-foreground">
+              {formatTimeAgo(lastAnsweredAt)}
+            </strong>
+            .
+          </p>
+
+          {/* Progress indicator */}
+          <div className="mt-3 flex items-center gap-3">
+            <Progress value={progressPercent} className="h-1.5 flex-1" />
+            <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0">
+              {progressPercent}%
+            </span>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4">
             <Button
               onClick={onResume}
               size="sm"
-              className="bg-blue-500 hover:bg-blue-600"
+              className="w-full sm:w-auto gap-2"
             >
-              <PlayCircle className="w-4 h-4 mr-2" />
+              <PlayCircle className="w-4 h-4" />
               Resume Progress
             </Button>
             <Button
@@ -105,8 +131,9 @@ export function ResumeQuizBanner({
               size="sm"
               variant="outline"
               disabled={isRestarting}
+              className="w-full sm:w-auto gap-2"
             >
-              <RotateCcw className="w-4 h-4 mr-2" />
+              <RotateCcw className="w-4 h-4" />
               {isRestarting ? "Restarting..." : "Start Fresh"}
             </Button>
           </div>

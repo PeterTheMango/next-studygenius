@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { QuizPlayer } from "@/components/quiz/quiz-player";
 import { ResumeQuizBanner } from "@/components/quiz/resume-quiz-banner";
 import {
@@ -12,6 +13,14 @@ import {
 } from "@/lib/quiz-sync";
 import { applyQuestionOrder } from "@/lib/shuffle";
 import { toast } from "sonner";
+import {
+  ArrowLeft,
+  GraduationCap,
+  FileQuestion,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface Question {
   id: string;
@@ -42,6 +51,7 @@ interface InProgressAttempt {
 
 interface QuizData {
   id: string;
+  title?: string;
   mode: string;
   settings?: {
     timeLimit?: number;
@@ -56,6 +66,7 @@ export default function TakeQuizPage({
   const { id: quizId } = use(params);
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [quiz, setQuiz] = useState<QuizData | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [attemptId, setAttemptId] = useState<string>("");
@@ -77,7 +88,7 @@ export default function TakeQuizPage({
   const loadQuizData = async () => {
     try {
       setIsLoading(true);
-      // Fetch quiz and check for in-progress attempts
+      setHasError(false);
       const res = await fetch(`/api/quizzes/${quizId}/check-progress`);
       const data = await res.json();
 
@@ -88,21 +99,23 @@ export default function TakeQuizPage({
       setQuiz(data.quiz);
 
       if (data.inProgressAttempt) {
-        // User has an in-progress attempt - show banner
         setInProgressAttempt(data.inProgressAttempt);
         setAttemptId(data.inProgressAttempt.id);
 
-        // Store question order and option seeds if available
         if (data.inProgressAttempt.questionOrder) {
-          const storedOrder = data.inProgressAttempt.questionOrder.questions || [];
-          const storedSeeds = data.inProgressAttempt.questionOrder.optionSeeds || {};
+          const storedOrder =
+            data.inProgressAttempt.questionOrder.questions || [];
+          const storedSeeds =
+            data.inProgressAttempt.questionOrder.optionSeeds || {};
 
           setQuestionOrder(storedOrder);
           setOptionSeeds(storedSeeds);
 
-          // Apply shuffled order immediately if we have it
           if (storedOrder.length > 0) {
-            const shuffledQuestions = applyQuestionOrder(data.questions as Question[], storedOrder);
+            const shuffledQuestions = applyQuestionOrder(
+              data.questions as Question[],
+              storedOrder
+            );
             setQuestions(shuffledQuestions);
           } else {
             setQuestions(data.questions as Question[]);
@@ -111,13 +124,12 @@ export default function TakeQuizPage({
           setQuestions(data.questions as Question[]);
         }
       } else {
-        // Set questions in original order initially
         setQuestions(data.questions as Question[]);
-        // No in-progress attempt - create new one and start immediately
         await createNewAttempt();
       }
     } catch (error) {
       console.error("Load quiz error:", error);
+      setHasError(true);
       toast.error(
         error instanceof Error ? error.message : "Failed to load quiz"
       );
@@ -140,14 +152,15 @@ export default function TakeQuizPage({
 
       setAttemptId(data.attempt.id);
 
-      // Store question order and option seeds from new attempt
       if (data.attempt.questionOrder && data.attempt.optionSeeds) {
         setQuestionOrder(data.attempt.questionOrder);
         setOptionSeeds(data.attempt.optionSeeds);
 
-        // Apply shuffled order to questions immediately
         if (data.attempt.questionOrder.length > 0 && questions.length > 0) {
-          const shuffledQuestions = applyQuestionOrder(questions, data.attempt.questionOrder);
+          const shuffledQuestions = applyQuestionOrder(
+            questions,
+            data.attempt.questionOrder
+          );
           setQuestions(shuffledQuestions);
         }
       }
@@ -164,17 +177,14 @@ export default function TakeQuizPage({
   const handleResume = () => {
     if (!inProgressAttempt) return;
 
-    // Merge local and database responses
     const localResponses = getLocalResponses(inProgressAttempt.id);
     const merged = mergeResponses(localResponses, inProgressAttempt.responses);
 
-    // Convert to SavedResponse Map for initialResponses
     const savedResponsesMap = new Map<string, SavedResponse>();
     inProgressAttempt.responses.forEach((resp) => {
       savedResponsesMap.set(resp.questionId, resp);
     });
 
-    // Overlay with merged data (which includes local responses)
     merged.forEach((value, questionId) => {
       const existing = savedResponsesMap.get(questionId);
       savedResponsesMap.set(questionId, {
@@ -189,56 +199,174 @@ export default function TakeQuizPage({
       });
     });
 
-    // Questions are already in shuffled order from loadQuizData
-    // Calculate starting index (first unanswered question in shuffled order)
     const answeredIds = new Set(merged.keys());
     const startIdx = getStartingQuestionIndex(questions, answeredIds);
 
     setInitialResponses(savedResponsesMap);
     setStartingIndex(startIdx);
     setShouldShowPlayer(true);
-    setInProgressAttempt(null); // Hide banner
+    setInProgressAttempt(null);
 
     toast.success(`Resuming from question ${startIdx + 1}`);
   };
 
   const handleRestart = () => {
-    // The banner component handles the abandon API call
-    // After successful abandon, it will reload the page
     router.refresh();
   };
 
+  // Loading state
   if (isLoading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
+      <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+        {/* Back nav skeleton */}
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="h-4 w-28 bg-muted rounded-md animate-pulse" />
+        </div>
+
+        {/* Header skeleton */}
+        <div
+          className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
+        >
+          <div className="p-2.5 bg-muted rounded-xl shrink-0">
+            <div className="w-5 h-5" />
+          </div>
+          <div className="space-y-2 flex-1">
+            <div className="h-7 w-48 bg-muted rounded-md animate-pulse" />
+            <div className="h-4 w-24 bg-muted rounded-md animate-pulse" />
+          </div>
+        </div>
+
+        {/* Quiz player area skeleton */}
+        <div
+          className="bg-card border border-border rounded-2xl p-6 sm:p-10 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
+        >
+          <div className="flex flex-col items-center justify-center gap-4 py-8 sm:py-12">
+            <div className="p-3 bg-primary/10 rounded-full">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+            <div className="text-center space-y-1.5">
+              <p className="text-sm font-medium text-foreground">
+                Preparing your quiz...
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Loading questions and checking progress
+              </p>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!quiz || questions.length === 0) {
+  // Error / empty state
+  if (hasError || !quiz || questions.length === 0) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-muted-foreground">
-            Quiz not found or has no questions.
+      <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+        {/* Back nav */}
+        <div
+          className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationFillMode: "backwards" }}
+        >
+          <Link
+            href={`/quizzes/${quizId}`}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to Quiz
+          </Link>
+        </div>
+
+        {/* Empty state card */}
+        <div
+          className="bg-card border border-border border-dashed rounded-2xl p-8 sm:p-12 text-center animate-in fade-in slide-in-from-bottom-4 duration-500"
+          style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
+        >
+          <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            {hasError ? (
+              <AlertTriangle className="w-7 h-7 text-muted-foreground" />
+            ) : (
+              <FileQuestion className="w-7 h-7 text-muted-foreground" />
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-1.5">
+            {hasError ? "Failed to load quiz" : "Quiz not available"}
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-5">
+            {hasError
+              ? "Something went wrong while loading the quiz. Please try again."
+              : "This quiz could not be found or has no questions yet."}
           </p>
+          {hasError ? (
+            <button
+              onClick={() => loadQuizData()}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-sm hover:bg-primary/90 transition-all"
+            >
+              Try Again
+            </button>
+          ) : (
+            <Link
+              href="/quizzes"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold shadow-sm hover:bg-primary/90 transition-all"
+            >
+              Back to Quizzes
+            </Link>
+          )}
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto py-8">
-      <div className="max-w-3xl mx-auto">
-        {/* Show resume banner if in-progress attempt exists and player not started */}
-        {inProgressAttempt && !shouldShowPlayer && (
+  // Resume banner state (in-progress attempt, player not yet shown)
+  if (inProgressAttempt && !shouldShowPlayer) {
+    return (
+      <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+        {/* Back nav */}
+        <div
+          className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationFillMode: "backwards" }}
+        >
+          <Link
+            href={`/quizzes/${quizId}`}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to Quiz
+          </Link>
+        </div>
+
+        {/* Page header */}
+        <div
+          className="flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
+        >
+          <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0 mt-0.5">
+            <GraduationCap className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight truncate">
+              {quiz.title || "Take Quiz"}
+            </h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <Badge
+                variant="secondary"
+                className="text-xs font-normal capitalize"
+              >
+                {quiz.mode}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {questions.length} question{questions.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Resume banner */}
+        <div
+          className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
+        >
           <ResumeQuizBanner
             attemptId={inProgressAttempt.id}
             quizId={quizId}
@@ -248,22 +376,26 @@ export default function TakeQuizPage({
             onResume={handleResume}
             onRestart={handleRestart}
           />
-        )}
-
-        {/* Show quiz player when ready */}
-        {shouldShowPlayer && attemptId && quiz && (
-          <QuizPlayer
-            quizId={quizId}
-            attemptId={attemptId}
-            mode={quiz.mode as "learn" | "revision" | "test"}
-            questions={questions}
-            timeLimit={quiz.settings?.timeLimit}
-            initialResponses={initialResponses}
-            startingQuestionIndex={startingIndex}
-            optionSeeds={optionSeeds}
-          />
-        )}
+        </div>
       </div>
+    );
+  }
+
+  // Active quiz player
+  return (
+    <div className="animate-in fade-in duration-300">
+      {shouldShowPlayer && attemptId && quiz && (
+        <QuizPlayer
+          quizId={quizId}
+          attemptId={attemptId}
+          mode={quiz.mode as "learn" | "revision" | "test"}
+          questions={questions}
+          timeLimit={quiz.settings?.timeLimit}
+          initialResponses={initialResponses}
+          startingQuestionIndex={startingIndex}
+          optionSeeds={optionSeeds}
+        />
+      )}
     </div>
   );
 }

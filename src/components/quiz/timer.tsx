@@ -30,10 +30,21 @@ export function Timer({ totalSeconds, onTimeUp }: TimerProps) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const isWarning = secondsLeft < 60;
+  const isCritical = secondsLeft < 15;
+
   return (
-    <div className={`flex items-center gap-2 font-mono text-lg font-bold ${secondsLeft < 60 ? 'text-red-500' : 'text-foreground'}`}>
-      <Clock className="w-5 h-5" />
-      {formatTime(secondsLeft)}
+    <div
+      className={`flex items-center gap-2 font-mono text-sm sm:text-base font-bold px-3 py-1.5 rounded-lg border transition-colors ${
+        isCritical
+          ? "text-destructive bg-destructive/10 border-destructive/25 animate-pulse"
+          : isWarning
+          ? "text-destructive bg-destructive/5 border-destructive/15"
+          : "text-foreground bg-muted border-border"
+      }`}
+    >
+      <Clock className="w-4 h-4 shrink-0" />
+      <span className="tabular-nums">{formatTime(secondsLeft)}</span>
     </div>
   );
 }

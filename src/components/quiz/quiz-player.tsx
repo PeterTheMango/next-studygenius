@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Timer } from "./timer";
 import { QuestionCard } from "./question-card";
@@ -20,6 +19,7 @@ import {
   ArrowLeft,
   Eye,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
@@ -1085,11 +1085,15 @@ export function QuizPlayer({
 
   return (
     <div
-      className={mode === "test" ? "flex gap-6" : "max-w-3xl mx-auto space-y-6"}
+      className={
+        mode === "test"
+          ? "flex flex-col lg:flex-row gap-4 lg:gap-6"
+          : "max-w-3xl mx-auto space-y-4 sm:space-y-6"
+      }
     >
       {/* Question Navigator Sidebar (Test mode only) */}
       {mode === "test" && (
-        <aside className="w-64 flex-shrink-0">
+        <aside className="hidden lg:block w-64 shrink-0">
           <QuestionNavigator
             questions={questions}
             currentIndex={currentIndex}
@@ -1099,32 +1103,44 @@ export function QuizPlayer({
         </aside>
       )}
 
+      {/* Mobile Navigator (Test mode - rendered via QuestionNavigator's mobile toggle) */}
+      {mode === "test" && (
+        <div className="lg:hidden">
+          <QuestionNavigator
+            questions={questions}
+            currentIndex={currentIndex}
+            answeredQuestionIds={answeredQuestionIds}
+            onNavigate={handleNavigateToQuestion}
+          />
+        </div>
+      )}
+
       {/* Main Quiz Content */}
-      <div className="flex-1 space-y-6 max-w-3xl">
+      <div className="flex-1 space-y-4 sm:space-y-6 max-w-3xl animate-in fade-in duration-300">
         {/* Online/Offline Status Indicator */}
         {(!isOnline || pendingSaveCount > 0 || pendingEvaluationCount > 0) && (
           <Card
             className={`p-3 ${
               !isOnline
-                ? "bg-orange-500/10 border-orange-500"
-                : "bg-blue-500/10 border-blue-500"
+                ? "bg-chart-4/8 border-chart-4/25"
+                : "bg-primary/5 border-primary/20"
             }`}
           >
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
               {!isOnline ? (
                 <>
-                  <WifiOff className="w-4 h-4 text-orange-500" />
-                  <span className="text-orange-500 font-medium">Offline</span>
+                  <WifiOff className="w-4 h-4 text-chart-4 shrink-0" />
+                  <span className="text-chart-4 font-medium">Offline</span>
                   <span className="text-muted-foreground">
-                    - Answers saved locally
+                    — Answers saved locally
                     {pendingEvaluationCount > 0 &&
                       ` (${pendingEvaluationCount} pending evaluation)`}
                   </span>
                 </>
               ) : pendingSaveCount > 0 ? (
                 <>
-                  <Wifi className="w-4 h-4 text-blue-500" />
-                  <span className="text-blue-500 font-medium">Syncing...</span>
+                  <Wifi className="w-4 h-4 text-primary shrink-0 animate-pulse" />
+                  <span className="text-primary font-medium">Syncing...</span>
                   <span className="text-muted-foreground">
                     {pendingSaveCount} answer{pendingSaveCount > 1 ? "s" : ""}{" "}
                     pending
@@ -1134,8 +1150,8 @@ export function QuizPlayer({
                 </>
               ) : pendingEvaluationCount > 0 ? (
                 <>
-                  <Wifi className="w-4 h-4 text-blue-500" />
-                  <span className="text-blue-500 font-medium">
+                  <Wifi className="w-4 h-4 text-primary shrink-0 animate-pulse" />
+                  <span className="text-primary font-medium">
                     Evaluating...
                   </span>
                   <span className="text-muted-foreground">
@@ -1150,24 +1166,24 @@ export function QuizPlayer({
 
         {/* Retry Round Banner */}
         {isRetryRound && (
-          <Card className="p-4 bg-purple-500/10 border-purple-500">
+          <Card className="p-3 sm:p-4 bg-accent/50 border-primary/20">
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-purple-500 hover:bg-purple-600">
+                  <div className="p-1.5 bg-primary/10 rounded-md">
+                    <RefreshCw className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">
                     Retry Round
-                  </Badge>
-                  <span className="text-sm font-medium">
-                    Master these questions
                   </span>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  Answer correctly twice in a row
+                <span className="text-xs text-muted-foreground">
+                  Answer correctly twice in a row to master
                 </span>
               </div>
 
               {/* Mastery Progress */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {retryQuestions.map((q) => {
                   const progress = masteryProgress.get(q.id);
                   const masteryLevel = progress?.consecutiveCorrect || 0;
@@ -1176,20 +1192,23 @@ export function QuizPlayer({
                   return (
                     <div key={q.id} className="flex items-center gap-2">
                       <div className="flex-1 flex items-center gap-2">
-                        <div className="h-2 flex-1 bg-secondary rounded-full overflow-hidden">
+                        <div className="h-1.5 flex-1 bg-secondary rounded-full overflow-hidden">
                           <div
-                            className={`h-full transition-all duration-500 ${
-                              isMastered ? "bg-green-500" : "bg-purple-500"
+                            className={`h-full transition-all duration-500 rounded-full ${
+                              isMastered ? "bg-chart-2" : "bg-primary"
                             }`}
                             style={{ width: `${(masteryLevel / 2) * 100}%` }}
                           />
                         </div>
-                        <span className="text-xs text-muted-foreground min-w-[3rem]">
-                          {isMastered ? "✓ Mastered" : `${masteryLevel}/2`}
+                        <span className="text-[10px] sm:text-xs text-muted-foreground min-w-[3rem] tabular-nums">
+                          {isMastered ? "Mastered" : `${masteryLevel}/2`}
                         </span>
                       </div>
                       {currentQuestion.id === q.id && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] border-primary/25 text-primary"
+                        >
                           Current
                         </Badge>
                       )}
@@ -1202,15 +1221,15 @@ export function QuizPlayer({
         )}
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {isRetryRound ? (
                 <>
                   Retry Question {retryQuestionIndex + 1} of{" "}
                   {retryQuestions.length}
                   {masteryProgress.get(currentQuestion.id) && (
-                    <span className="ml-2">
+                    <span className="ml-1 text-muted-foreground/70">
                       (Attempt #
                       {(masteryProgress.get(currentQuestion.id)
                         ?.totalAttempts || 0) + 1}
@@ -1224,15 +1243,18 @@ export function QuizPlayer({
                 </>
               )}
             </p>
-            <Badge variant="outline" className="mt-1">
+            <Badge
+              variant="outline"
+              className="mt-1 text-xs font-normal border-border"
+            >
               {currentQuestion.topic}
             </Badge>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             {mode !== "test" && (
-              <div className="text-sm">
-                <span className="text-green-500 font-medium">
+              <div className="text-xs sm:text-sm tabular-nums">
+                <span className="text-chart-2 font-semibold">
                   {correctCount}
                 </span>
                 <span className="text-muted-foreground">
@@ -1249,16 +1271,16 @@ export function QuizPlayer({
 
         {/* Progress */}
         {mode === "test" ? (
-          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+          <div className="h-1.5 sm:h-2 w-full bg-secondary rounded-full overflow-hidden">
             <div
-              className="bg-blue-500 h-full transition-all duration-500 ease-in-out"
+              className="bg-primary h-full transition-all duration-500 ease-in-out rounded-full"
               style={{ width: `${progress}%` }}
             />
           </div>
         ) : (
-          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden flex">
+          <div className="h-1.5 sm:h-2 w-full bg-secondary rounded-full overflow-hidden flex">
             <div
-              className="bg-green-500 h-full transition-all duration-500 ease-in-out"
+              className="bg-chart-2 h-full transition-all duration-500 ease-in-out"
               style={{
                 width: `${
                   (Array.from(responses.values()).filter((r) => r.isCorrect)
@@ -1269,11 +1291,12 @@ export function QuizPlayer({
               }}
             />
             <div
-              className="bg-red-500 h-full transition-all duration-500 ease-in-out"
+              className="bg-destructive h-full transition-all duration-500 ease-in-out"
               style={{
                 width: `${
-                  (Array.from(responses.values()).filter((r) => !r.isCorrect)
-                    .length /
+                  (Array.from(responses.values()).filter(
+                    (r) => r.isCorrect === false
+                  ).length /
                     questions.length) *
                   100
                 }%`,
@@ -1296,26 +1319,26 @@ export function QuizPlayer({
         {/* Feedback (Learn/Revision modes) */}
         {feedback && (
           <Card
-            className={`p-4 ${
+            className={`p-3 sm:p-4 animate-in fade-in slide-in-from-top-2 duration-200 ${
               feedback.isPending
-                ? "bg-blue-500/10 border-blue-500"
+                ? "bg-primary/5 border-primary/20"
                 : feedback.isCorrect
-                ? "bg-green-500/10 border-green-500"
-                : "bg-red-500/10 border-red-500"
+                ? "bg-chart-2/8 border-chart-2/25"
+                : "bg-destructive/5 border-destructive/20"
             }`}
           >
             <div className="flex items-start gap-3">
               {feedback.isPending ? (
-                <Wifi className="w-5 h-5 text-blue-500 mt-0.5 animate-pulse" />
+                <Wifi className="w-5 h-5 text-primary mt-0.5 animate-pulse shrink-0" />
               ) : feedback.isCorrect ? (
-                <CheckCircle className="w-5 h-5 text-green-500 mt-0.5" />
+                <CheckCircle className="w-5 h-5 text-chart-2 mt-0.5 shrink-0" />
               ) : (
-                <XCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                <XCircle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
               )}
-              <div className="flex-1">
-                <p className="font-medium">
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm sm:text-base text-foreground">
                   {feedback.isPending
-                    ? "Answer Submitted - Evaluation Pending"
+                    ? "Answer Submitted — Evaluation Pending"
                     : feedback.isCorrect
                     ? "Correct!"
                     : "Incorrect"}
@@ -1325,33 +1348,33 @@ export function QuizPlayer({
                   !feedback.isPending &&
                   (currentQuestion.type === "short_answer" ||
                     currentQuestion.type === "fill_blank") && (
-                    <p className="text-sm mt-1 text-muted-foreground">
-                      (AI Confidence Score: {feedback.score}/100)
+                    <p className="text-xs sm:text-sm mt-1 text-muted-foreground">
+                      AI Confidence Score: {feedback.score}/100
                     </p>
                   )}
                 {!feedback.isCorrect && !feedback.isPending && (
-                  <p className="text-sm mt-1">
+                  <p className="text-xs sm:text-sm mt-1 text-foreground">
                     The correct answer is:{" "}
                     <strong>{feedback.correctAnswer}</strong>
                   </p>
                 )}
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-xs sm:text-sm text-muted-foreground mt-2 leading-relaxed">
                   {feedback.explanation}
                 </p>
 
-                {/* Override Button - Show only when answer is incorrect */}
+                {/* Override Button */}
                 {!feedback.isCorrect && !feedback.isPending && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleOverrideAnswer}
                     disabled={isOverriding}
-                    className="mt-3 border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                    className="mt-3 border-chart-4/40 text-chart-4 hover:bg-chart-4/10 hover:text-chart-4 gap-2"
                   >
-                    <AlertCircle className="w-4 h-4 mr-2" />
+                    <AlertCircle className="w-4 h-4" />
                     {isOverriding
                       ? "Overriding..."
-                      : "Override: Mark Answer as Correct"}
+                      : "Override: Mark as Correct"}
                   </Button>
                 )}
               </div>
@@ -1360,39 +1383,40 @@ export function QuizPlayer({
         )}
 
         {/* Actions */}
-        <div className="flex justify-between">
+        <div className="flex flex-col-reverse sm:flex-row justify-between gap-3">
           {/* Test mode navigation buttons */}
           {mode === "test" && (
             <>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    handleNavigateToQuestion(Math.max(0, currentIndex - 1))
-                  }
-                  disabled={currentIndex === 0}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Previous
-                </Button>
-                {currentIndex < questions.length - 1 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => handleNavigateToQuestion(currentIndex + 1)}
-                  >
-                    Next
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                )}
-              </div>
               <Button
-                onClick={handleShowReview}
-                size="lg"
-                className="bg-blue-500 hover:bg-blue-600"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  handleNavigateToQuestion(Math.max(0, currentIndex - 1))
+                }
+                disabled={currentIndex === 0}
+                className="gap-1.5"
               >
-                <Eye className="w-4 h-4 mr-2" />
-                Review & Submit
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Previous</span>
               </Button>
+              {currentIndex < questions.length - 1 ? (
+                <Button
+                  size="sm"
+                  onClick={() => handleNavigateToQuestion(currentIndex + 1)}
+                  className="gap-1.5"
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleShowReview}
+                  className="gap-2 w-full sm:w-auto"
+                >
+                  <Eye className="w-4 h-4" />
+                  Review & Submit
+                </Button>
+              )}
             </>
           )}
 
@@ -1408,6 +1432,7 @@ export function QuizPlayer({
                       currentQuestion.type !== "ordering") ||
                     isSubmitting
                   }
+                  className="w-full sm:w-auto"
                 >
                   {isSubmitting
                     ? currentQuestion.type === "fill_blank" ||
@@ -1417,13 +1442,17 @@ export function QuizPlayer({
                     : "Submit Answer"}
                 </Button>
               ) : (
-                <Button onClick={handleNext} disabled={isSubmitting}>
+                <Button
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                  className="gap-2 w-full sm:w-auto"
+                >
                   {isSubmitting
                     ? "Submitting..."
                     : isLastQuestion
                     ? "View Results"
                     : "Next Question"}
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
               )}
             </div>

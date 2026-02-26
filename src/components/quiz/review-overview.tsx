@@ -4,7 +4,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Check, Circle, AlertTriangle, ArrowLeft, Send, Clock } from "lucide-react";
+import {
+  Check,
+  Circle,
+  AlertTriangle,
+  ArrowLeft,
+  Send,
+  Clock,
+  ClipboardCheck,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Question {
@@ -36,141 +44,189 @@ export function ReviewOverview({
   const unansweredCount = questions.length - answeredCount;
   const pendingEvaluationCount = pendingEvaluationQuestionIds.size;
   const allAnswered = unansweredCount === 0;
+  const progressPercent = Math.round(
+    (answeredCount / questions.length) * 100
+  );
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">Review Your Answers</h1>
-        <p className="text-muted-foreground">
+      <div
+        className="text-center space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300"
+        style={{ animationFillMode: "backwards" }}
+      >
+        <div className="p-2.5 bg-primary/10 text-primary rounded-xl w-fit mx-auto mb-3">
+          <ClipboardCheck className="w-5 h-5" />
+        </div>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+          Review Your Answers
+        </h1>
+        <p className="text-sm text-muted-foreground">
           Review your answers before final submission
         </p>
       </div>
 
       {/* Summary Card */}
-      <Card className="p-6">
+      <Card
+        className="p-4 sm:p-6 border-border animate-in fade-in slide-in-from-bottom-2 duration-300"
+        style={{ animationDelay: "50ms", animationFillMode: "backwards" }}
+      >
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">{answeredCount}</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums">
+              {answeredCount}
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               of {questions.length} questions answered
             </p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold">
-              {Math.round((answeredCount / questions.length) * 100)}%
+            <div className="text-2xl sm:text-3xl font-bold text-foreground tabular-nums">
+              {progressPercent}%
             </div>
-            <p className="text-sm text-muted-foreground">Complete</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Complete</p>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-4 h-3 w-full bg-secondary rounded-full overflow-hidden">
+        <div className="mt-4 h-2.5 w-full bg-secondary rounded-full overflow-hidden">
           <div
-            className="bg-green-500 h-full transition-all duration-500 ease-in-out"
-            style={{
-              width: `${(answeredCount / questions.length) * 100}%`,
-            }}
+            className="bg-chart-2 h-full transition-all duration-500 ease-in-out rounded-full"
+            style={{ width: `${progressPercent}%` }}
           />
         </div>
       </Card>
 
       {/* Warning for unanswered questions */}
       {!allAnswered && (
-        <Alert variant="default" className="border-orange-500 bg-orange-50 dark:bg-orange-950">
-          <AlertTriangle className="h-4 w-4 text-orange-500" />
-          <AlertDescription className="text-orange-700 dark:text-orange-300">
-            You have {unansweredCount} unanswered question
-            {unansweredCount > 1 ? "s" : ""}. You can still submit, but
-            unanswered questions will be marked as incorrect.
+        <Alert
+          variant="default"
+          className="border-chart-4/40 bg-chart-4/8 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
+        >
+          <AlertTriangle className="h-4 w-4 text-chart-4" />
+          <AlertDescription className="text-foreground text-sm">
+            You have{" "}
+            <strong>
+              {unansweredCount} unanswered question
+              {unansweredCount > 1 ? "s" : ""}
+            </strong>
+            . You can still submit, but unanswered questions will be marked as
+            incorrect.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Info for pending evaluations */}
       {pendingEvaluationCount > 0 && (
-        <Alert variant="default" className="border-blue-500 bg-blue-50 dark:bg-blue-950">
-          <Clock className="h-4 w-4 text-blue-500" />
-          <AlertDescription className="text-blue-700 dark:text-blue-300">
-            {pendingEvaluationCount} answer{pendingEvaluationCount > 1 ? "s are" : " is"} pending evaluation.
-            You can submit now and results will update when evaluations complete.
+        <Alert
+          variant="default"
+          className="border-primary/25 bg-primary/5 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ animationDelay: "100ms", animationFillMode: "backwards" }}
+        >
+          <Clock className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-foreground text-sm">
+            <strong>
+              {pendingEvaluationCount} answer
+              {pendingEvaluationCount > 1 ? "s are" : " is"}
+            </strong>{" "}
+            pending evaluation. You can submit now and results will update when
+            evaluations complete.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Questions List */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {questions.map((question, index) => {
           const isAnswered = answeredQuestionIds.has(question.id);
-          const isPendingEvaluation = pendingEvaluationQuestionIds.has(question.id);
+          const isPendingEvaluation = pendingEvaluationQuestionIds.has(
+            question.id
+          );
 
           return (
             <Card
               key={question.id}
               className={cn(
-                "p-4 transition-all hover:shadow-md cursor-pointer",
+                "p-3 sm:p-4 transition-all hover:shadow-sm cursor-pointer border animate-in fade-in slide-in-from-bottom-2 duration-300",
                 isPendingEvaluation
-                  ? "border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/50"
+                  ? "border-primary/20 bg-primary/3"
                   : isAnswered
-                  ? "border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/50"
-                  : "border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/50"
+                  ? "border-chart-2/20 bg-chart-2/3"
+                  : "border-chart-4/20 bg-chart-4/3"
               )}
+              style={{
+                animationDelay: `${150 + index * 30}ms`,
+                animationFillMode: "backwards",
+              }}
               onClick={() => onNavigateToQuestion(index)}
             >
-              <div className="flex items-start gap-4">
-                {/* Question Number & Status Icon */}
-                <div className="flex-shrink-0">
+              <div className="flex items-start gap-3 sm:gap-4">
+                {/* Status circle */}
+                <div className="shrink-0">
                   <div
                     className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-bold",
+                      "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold",
                       isPendingEvaluation
-                        ? "bg-blue-500 text-white"
+                        ? "bg-primary text-primary-foreground"
                         : isAnswered
-                        ? "bg-green-500 text-white"
-                        : "bg-orange-500 text-white"
+                        ? "bg-chart-2 text-white"
+                        : "bg-chart-4 text-white"
                     )}
                   >
                     {isPendingEvaluation ? (
-                      <Clock className="w-5 h-5 animate-pulse" />
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
                     ) : isAnswered ? (
-                      <Check className="w-5 h-5" />
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                     ) : (
-                      <Circle className="w-5 h-5" />
+                      <Circle className="w-4 h-4 sm:w-5 sm:h-5" />
                     )}
                   </div>
                 </div>
 
                 {/* Question Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold">Question {index + 1}</h3>
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <h3 className="font-semibold text-sm text-foreground">
+                      Question {index + 1}
+                    </h3>
                     {question.topic && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] sm:text-xs border-border"
+                      >
                         {question.topic}
                       </Badge>
                     )}
                     <Badge
-                      variant={isAnswered || isPendingEvaluation ? "default" : "secondary"}
                       className={cn(
-                        "text-xs",
+                        "text-[10px] sm:text-xs",
                         isPendingEvaluation
-                          ? "bg-blue-500 hover:bg-blue-600"
+                          ? "bg-primary/15 text-primary border-primary/25"
                           : isAnswered
-                          ? "bg-green-500 hover:bg-green-600"
-                          : "bg-orange-500 hover:bg-orange-600 text-white"
+                          ? "bg-chart-2/15 text-chart-2 border-chart-2/25"
+                          : "bg-chart-4/15 text-chart-4 border-chart-4/25"
                       )}
                     >
-                      {isPendingEvaluation ? "Pending Evaluation" : isAnswered ? "Answered" : "Not answered"}
+                      {isPendingEvaluation
+                        ? "Pending"
+                        : isAnswered
+                        ? "Answered"
+                        : "Unanswered"}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">
                     {question.questionText}
                   </p>
                 </div>
 
-                {/* Action Arrow */}
-                <div className="flex-shrink-0">
-                  <Button variant="ghost" size="sm">
+                {/* Action */}
+                <div className="shrink-0 hidden sm:block">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                  >
                     View →
                   </Button>
                 </div>
@@ -181,14 +237,21 @@ export function ReviewOverview({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-6 border-t">
+      <div
+        className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 sm:pt-6 border-t border-border animate-in fade-in slide-in-from-bottom-2 duration-300"
+        style={{
+          animationDelay: `${150 + questions.length * 30 + 50}ms`,
+          animationFillMode: "backwards",
+        }}
+      >
         <Button
           variant="outline"
           onClick={onGoBack}
           disabled={isSubmitting}
           size="lg"
+          className="gap-2 w-full sm:w-auto"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+          <ArrowLeft className="w-4 h-4" />
           Back to Quiz
         </Button>
 
@@ -196,14 +259,14 @@ export function ReviewOverview({
           onClick={onSubmitQuiz}
           disabled={isSubmitting}
           size="lg"
-          className="bg-blue-500 hover:bg-blue-600"
+          className="gap-2 w-full sm:w-auto"
         >
           {isSubmitting ? (
             "Submitting..."
           ) : (
             <>
               Submit Quiz
-              <Send className="w-4 h-4 ml-2" />
+              <Send className="w-4 h-4" />
             </>
           )}
         </Button>

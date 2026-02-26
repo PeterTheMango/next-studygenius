@@ -1,374 +1,587 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Check, X, Clock, Target, RotateCcw, LayoutDashboard, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import confetti from 'canvas-confetti';
+import React, { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import {
+  Check, X, Clock, Target, RotateCcw, LayoutDashboard,
+  ChevronDown, AlertCircle, Sparkles, ArrowLeft, Lightbulb
+} from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import confetti from 'canvas-confetti'
+import { motion, AnimatePresence } from 'motion/react'
+import Link from 'next/link'
 
 interface QuizResultProps {
   quiz: {
-    id: string;
-    title: string;
-    mode: 'learn' | 'revision' | 'test';
+    id: string
+    title: string
+    mode: 'learn' | 'revision' | 'test'
     questions: {
-      id: string;
-      questionText: string;
-      correctAnswer: string;
-      explanation: string;
-      options?: string[];
-      type?: string;
-    }[];
-  };
+      id: string
+      questionText: string
+      correctAnswer: string
+      explanation: string
+      options?: string[]
+      type?: string
+    }[]
+  }
   attempt: {
-    score: number;
-    correctAnswers: number;
-    totalQuestions: number;
-    timeSpent: number;
+    score: number
+    correctAnswers: number
+    totalQuestions: number
+    timeSpent: number
     answers: Record<string, {
-      userAnswer: string;
-      isCorrect: boolean;
-      score?: number;
-      attemptNumber?: number;
-      totalAttempts?: number;
-      hasRetries?: boolean;
-      firstAttemptCorrect?: boolean;
-      allAttempts?: any[];
-    }>;
-  };
+      userAnswer: string
+      isCorrect: boolean
+      score?: number
+      attemptNumber?: number
+      totalAttempts?: number
+      hasRetries?: boolean
+      firstAttemptCorrect?: boolean
+      allAttempts?: any[]
+    }>
+  }
+}
+
+function AnimatedScore({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0)
+  const ref = useRef<number | null>(null)
+
+  useEffect(() => {
+    const duration = 1200
+    const start = performance.now()
+
+    const tick = (now: number) => {
+      const elapsed = now - start
+      const progress = Math.min(elapsed / duration, 1)
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(Math.round(eased * value))
+      if (progress < 1) {
+        ref.current = requestAnimationFrame(tick)
+      }
+    }
+
+    ref.current = requestAnimationFrame(tick)
+    return () => {
+      if (ref.current) cancelAnimationFrame(ref.current)
+    }
+  }, [value])
+
+  return <>{display}</>
+}
+
+function ScoreRing({ score, size = 160, strokeWidth = 10 }: { score: number; size?: number; strokeWidth?: number }) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+
+  const getScoreColor = (s: number) => {
+    if (s >= 80) return 'var(--color-chart-2)'
+    if (s >= 50) return 'var(--color-chart-4)'
+    return 'var(--color-destructive)'
+  }
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--color-border)"
+          strokeWidth={strokeWidth}
+        />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={getScoreColor(score)}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: circumference - (score / 100) * circumference }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-bold text-foreground tabular-nums tracking-tight">
+          <AnimatedScore value={score} />
+          <span className="text-2xl text-muted-foreground">%</span>
+        </span>
+        <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">
+          Score
+        </span>
+      </div>
+    </div>
+  )
 }
 
 export function ResultsSummary({ quiz, attempt }: QuizResultProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
-  const [overridingQuestions, setOverridingQuestions] = useState<Set<string>>(new Set());
-  const [localAttempt, setLocalAttempt] = useState(attempt);
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
+  const [overridingQuestions, setOverridingQuestions] = useState<Set<string>>(new Set())
+  const [localAttempt, setLocalAttempt] = useState(attempt)
+  const hasConfettied = useRef(false)
+
+  // Confetti on high scores
+  useEffect(() => {
+    if (!hasConfettied.current && localAttempt.score >= 80) {
+      hasConfettied.current = true
+      const timer = setTimeout(() => {
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } })
+      }, 800)
+      return () => clearTimeout(timer)
+    }
+  }, [localAttempt.score])
 
   // Retrieve and merge confidence scores from sessionStorage
   useEffect(() => {
-    const attemptId = searchParams.get('attempt');
+    const attemptId = searchParams.get('attempt')
     if (attemptId && typeof window !== 'undefined') {
-      const scoresJson = sessionStorage.getItem(`quiz-scores-${attemptId}`);
+      const scoresJson = sessionStorage.getItem(`quiz-scores-${attemptId}`)
       if (scoresJson) {
         try {
-          const scores = JSON.parse(scoresJson);
-          // Merge scores into localAttempt.answers
+          const scores = JSON.parse(scoresJson)
           setLocalAttempt(prev => {
-            const newAnswers = { ...prev.answers };
+            const newAnswers = { ...prev.answers }
             scores.forEach((item: any) => {
               if (newAnswers[item.questionId]) {
                 newAnswers[item.questionId] = {
                   ...newAnswers[item.questionId],
                   score: item.score
-                };
+                }
               }
-            });
-            return {
-              ...prev,
-              answers: newAnswers
-            };
-          });
-          // Clean up sessionStorage
-          sessionStorage.removeItem(`quiz-scores-${attemptId}`);
+            })
+            return { ...prev, answers: newAnswers }
+          })
+          sessionStorage.removeItem(`quiz-scores-${attemptId}`)
         } catch (error) {
-          console.error('Failed to parse session scores:', error);
+          console.error('Failed to parse session scores:', error)
         }
       }
     }
-  }, [searchParams]);
+  }, [searchParams])
 
   const toggleExpand = (id: string) => {
-    setExpandedQuestion(expandedQuestion === id ? null : id);
-  };
-
-  const percentage = Math.round(localAttempt.score);
-  const data = [
-    { name: 'Correct', value: localAttempt.correctAnswers, color: '#22c55e' },
-    { name: 'Incorrect', value: localAttempt.totalQuestions - localAttempt.correctAnswers, color: '#f87171' },
-  ];
-
-  // Handle empty data case for chart to avoid errors
-  if (localAttempt.totalQuestions === 0) {
-    data[1].value = 1; // dummy value
+    setExpandedQuestion(expandedQuestion === id ? null : id)
   }
 
-  // Calculate retry statistics
-  const questionsWithRetries = Object.values(localAttempt.answers).filter(a => a.hasRetries).length;
+  const percentage = Math.round(localAttempt.score)
+  const data = [
+    { name: 'Correct', value: localAttempt.correctAnswers, color: 'var(--color-chart-2)' },
+    { name: 'Incorrect', value: localAttempt.totalQuestions - localAttempt.correctAnswers, color: 'var(--color-destructive)' },
+  ]
+
+  if (localAttempt.totalQuestions === 0) {
+    data[1].value = 1
+  }
+
+  const questionsWithRetries = Object.values(localAttempt.answers).filter(a => a.hasRetries).length
   const questionsImprovedInRetry = Object.values(localAttempt.answers).filter(
     a => a.hasRetries && !a.firstAttemptCorrect && a.isCorrect
-  ).length;
+  ).length
 
-  const onRetry = () => {
-    router.push(`/quizzes/${quiz.id}`);
-  };
+  const correctCount = localAttempt.correctAnswers
+  const incorrectCount = localAttempt.totalQuestions - localAttempt.correctAnswers
 
-  const onDashboard = () => {
-    router.push('/dashboard');
-  };
+  const getScoreLabel = (s: number) => {
+    if (s >= 90) return 'Excellent'
+    if (s >= 80) return 'Great Job'
+    if (s >= 60) return 'Good Effort'
+    if (s >= 40) return 'Keep Practicing'
+    return 'Keep Going'
+  }
 
   const handleOverrideAnswer = async (questionId: string) => {
-    const attemptId = searchParams.get('attempt');
-    if (!attemptId || overridingQuestions.has(questionId)) return;
+    const attemptId = searchParams.get('attempt')
+    if (!attemptId || overridingQuestions.has(questionId)) return
 
     const confirmOverride = confirm(
       "Are you sure you want to mark this answer as correct? This will override the current evaluation and update your score."
-    );
+    )
 
-    if (!confirmOverride) return;
+    if (!confirmOverride) return
 
-    // Add to overriding set
-    setOverridingQuestions(prev => new Set(prev).add(questionId));
+    setOverridingQuestions(prev => new Set(prev).add(questionId))
 
     try {
       const res = await fetch(`/api/quizzes/${quiz.id}/override`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          attemptId,
-          questionId,
-        }),
-      });
+        body: JSON.stringify({ attemptId, questionId }),
+      })
 
-      const data = await res.json();
+      const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to override answer");
+        throw new Error(data.error || "Failed to override answer")
       }
 
-      // Update local state to reflect the change
       setLocalAttempt(prev => {
-        const newAnswers = { ...prev.answers };
+        const newAnswers = { ...prev.answers }
         if (newAnswers[questionId]) {
           newAnswers[questionId] = {
             ...newAnswers[questionId],
             isCorrect: true,
             score: 100,
-          };
+          }
         }
 
-        // Recalculate correct answers count
-        const newCorrectCount = Object.values(newAnswers).filter(a => a.isCorrect).length;
+        const newCorrectCount = Object.values(newAnswers).filter(a => a.isCorrect).length
 
         return {
           ...prev,
           answers: newAnswers,
           correctAnswers: newCorrectCount,
           score: Math.round((newCorrectCount / prev.totalQuestions) * 100),
-        };
-      });
+        }
+      })
 
-      toast.success("Answer marked as correct! Your score has been updated.");
+      toast.success("Answer marked as correct! Your score has been updated.")
 
-      // Show confetti for the override
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
     } catch (error: any) {
-      console.error("Override error:", error);
-      toast.error(error.message || "Failed to override answer");
+      console.error("Override error:", error)
+      toast.error(error.message || "Failed to override answer")
     } finally {
-      // Remove from overriding set
       setOverridingQuestions(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(questionId);
-        return newSet;
-      });
+        const newSet = new Set(prev)
+        newSet.delete(questionId)
+        return newSet
+      })
     }
-  };
+  }
+
+  const stagger = {
+    hidden: {},
+    show: {
+      transition: { staggerChildren: 0.06, delayChildren: 0.1 }
+    }
+  }
+
+  const fadeUp = {
+    hidden: { opacity: 0, y: 12 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const } }
+  }
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
-      <div className="text-center mb-10">
-        <h2 className="text-4xl font-bold text-foreground mb-2">Quiz Complete!</h2>
-        <p className="text-muted-foreground">Here's how you performed on <span className="font-semibold">{quiz.title}</span></p>
-      </div>
+    <motion.div
+      className="max-w-4xl mx-auto px-4 sm:px-0"
+      variants={stagger}
+      initial="hidden"
+      animate="show"
+    >
+      {/* Back Navigation */}
+      <motion.div variants={fadeUp} className="mb-6">
+        <Link
+          href={`/quizzes/${quiz.id}`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to Quiz
+        </Link>
+      </motion.div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-10">
-        <div className="col-span-1 bg-card p-6 rounded-2xl border border-border shadow-sm flex flex-col items-center justify-center">
-            <div className="w-40 h-40 relative">
-                <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                    <Pie
-                    data={data}
-                    innerRadius={60}
-                    outerRadius={75}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                    >
-                    {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                    </Pie>
-                </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex items-center justify-center flex-col">
-                    <span className="text-3xl font-bold text-foreground">{percentage}%</span>
-                    <span className="text-xs text-muted-foreground font-medium uppercase">Score</span>
-                </div>
-            </div>
+      {/* Header */}
+      <motion.div variants={fadeUp} className="flex flex-col gap-1 mb-8">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+            {getScoreLabel(percentage)}
+          </h1>
+          {percentage >= 80 && <Sparkles className="w-5 h-5 text-chart-4" />}
         </div>
+        <p className="text-sm text-muted-foreground">
+          Results for <span className="font-medium text-foreground">{quiz.title}</span>
+          <Badge variant="secondary" className="ml-2 text-[10px] font-normal capitalize align-middle">
+            {quiz.mode}
+          </Badge>
+        </p>
+      </motion.div>
 
-        <div className="col-span-2 grid grid-cols-2 gap-4">
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
-                <div className="p-4 bg-blue-50 text-blue-600 rounded-xl">
-                    <Clock className="w-8 h-8" />
-                </div>
-                <div>
-                    <p className="text-sm text-muted-foreground font-medium">Time Taken</p>
-                    <h3 className="text-2xl font-bold text-foreground">
-                        {Math.floor(localAttempt.timeSpent / 60)}m {Math.round(localAttempt.timeSpent % 60)}s
-                    </h3>
-                </div>
-            </div>
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-sm flex items-center gap-4">
-                <div className="p-4 bg-green-50 text-green-600 rounded-xl">
-                    <Target className="w-8 h-8" />
-                </div>
-                <div>
-                    <p className="text-sm text-muted-foreground font-medium">Accuracy</p>
-                    <h3 className="text-2xl font-bold text-foreground">
-                        {localAttempt.correctAnswers} / {localAttempt.totalQuestions}
-                    </h3>
-                </div>
+      {/* Score Card — stacks vertically on mobile, horizontal on md+ */}
+      <motion.div variants={fadeUp}>
+        <Card className="overflow-hidden mb-6">
+          <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center gap-6">
+            {/* Score Ring */}
+            <div className="flex justify-center md:justify-start shrink-0">
+              <ScoreRing score={percentage} />
             </div>
 
-            {/* Retry Statistics Card - Only show for learn mode */}
-            {quiz.mode === 'learn' && questionsWithRetries > 0 && (
-              <div className="col-span-2 bg-purple-50 p-6 rounded-2xl border border-purple-200 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-purple-600 font-medium mb-1">Retry Round Stats</p>
-                    <p className="text-xs text-purple-500">
-                      {questionsWithRetries} question{questionsWithRetries > 1 ? 's' : ''} practiced in retry round
-                    </p>
+            {/* Stats Grid */}
+            <div className="flex-1 grid grid-cols-2 gap-3 sm:gap-4">
+              {/* Correct */}
+              <div className="bg-chart-2/8 border border-chart-2/15 rounded-xl p-3.5 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-chart-2/15 rounded-lg">
+                    <Check className="w-3.5 h-3.5 text-chart-2" />
                   </div>
-                  <div className="text-right">
-                    <h3 className="text-3xl font-bold text-purple-600">
-                      {questionsImprovedInRetry}
-                    </h3>
-                    <p className="text-xs text-purple-500">mastered</p>
+                  <span className="text-xs text-muted-foreground font-medium">Correct</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground tabular-nums">{correctCount}</p>
+              </div>
+
+              {/* Incorrect */}
+              <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-3.5 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-destructive/15 rounded-lg">
+                    <X className="w-3.5 h-3.5 text-destructive" />
                   </div>
+                  <span className="text-xs text-muted-foreground font-medium">Incorrect</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground tabular-nums">{incorrectCount}</p>
+              </div>
+
+              {/* Time */}
+              <div className="bg-primary/5 border border-primary/10 rounded-xl p-3.5 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-primary/10 rounded-lg">
+                    <Clock className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="text-xs text-muted-foreground font-medium">Time</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground tabular-nums">
+                  {Math.floor(localAttempt.timeSpent / 60)}
+                  <span className="text-sm text-muted-foreground font-medium">m </span>
+                  {Math.round(localAttempt.timeSpent % 60)}
+                  <span className="text-sm text-muted-foreground font-medium">s</span>
+                </p>
+              </div>
+
+              {/* Accuracy */}
+              <div className="bg-primary/5 border border-primary/10 rounded-xl p-3.5 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-primary/10 rounded-lg">
+                    <Target className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="text-xs text-muted-foreground font-medium">Accuracy</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground tabular-nums">
+                  {correctCount}<span className="text-sm text-muted-foreground font-medium">/{localAttempt.totalQuestions}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Retry Stats Banner — learn mode only */}
+          {quiz.mode === 'learn' && questionsWithRetries > 0 && (
+            <div className="border-t border-border px-5 sm:px-6 py-3.5 bg-chart-4/5 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-chart-4/15 rounded-lg">
+                  <RotateCcw className="w-3.5 h-3.5 text-chart-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-foreground">
+                    {questionsWithRetries} question{questionsWithRetries > 1 ? 's' : ''} retried
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {questionsImprovedInRetry} mastered on retry
+                  </p>
                 </div>
               </div>
-            )}
-            
-            <div className="col-span-2 flex gap-4 mt-2">
-                <button 
-                    onClick={onRetry}
-                    className="flex-1 flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground rounded-xl font-semibold shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
-                >
-                    <RotateCcw className="w-5 h-5" />
-                    Retry Quiz
-                </button>
-                <button 
-                    onClick={onDashboard}
-                    className="flex-1 flex items-center justify-center gap-2 py-4 bg-card text-foreground border border-border rounded-xl font-semibold hover:bg-accent transition-all"
-                >
-                    <LayoutDashboard className="w-5 h-5" />
-                    Dashboard
-                </button>
+              <span className="text-lg font-bold text-chart-4 tabular-nums">{questionsImprovedInRetry}</span>
             </div>
+          )}
+        </Card>
+      </motion.div>
+
+      {/* Action Buttons */}
+      <motion.div variants={fadeUp} className="flex gap-3 mb-8">
+        <Button
+          onClick={() => router.push(`/quizzes/${quiz.id}`)}
+          className="flex-1 h-11 rounded-xl font-semibold shadow-sm shadow-primary/15"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Retry Quiz
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => router.push('/dashboard')}
+          className="flex-1 h-11 rounded-xl font-semibold"
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          Dashboard
+        </Button>
+      </motion.div>
+
+      {/* Question Review */}
+      <motion.div variants={fadeUp} className="space-y-3">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-sm font-semibold text-foreground">Question Review</h2>
+          <span className="text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full font-medium">
+            {quiz.questions.length} questions
+          </span>
         </div>
-      </div>
 
-      <div className="space-y-4">
-        <h3 className="text-xl font-bold text-foreground">Detailed Review</h3>
         {quiz.questions.map((q, idx) => {
-            const answer = localAttempt.answers[q.id];
-            const isCorrect = answer?.isCorrect;
-            const isExpanded = expandedQuestion === q.id;
-            const isOverriding = overridingQuestions.has(q.id);
+          const answer = localAttempt.answers[q.id]
+          const isCorrect = answer?.isCorrect
+          const isExpanded = expandedQuestion === q.id
+          const isOverriding = overridingQuestions.has(q.id)
 
-            return (
-                <div key={q.id} className={`bg-card rounded-xl border transition-all ${isCorrect ? 'border-border' : 'border-red-200'}`}>
-                    <div 
-                        onClick={() => toggleExpand(q.id)}
-                        className="p-4 flex items-center justify-between cursor-pointer hover:bg-accent rounded-xl"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isCorrect ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                {isCorrect ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-foreground">Question {idx + 1}</p>
-                                  {/* Only show retry badges for learn mode */}
-                                  {quiz.mode === 'learn' && answer?.hasRetries && (
-                                    <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-xs font-medium rounded">
-                                      {answer.firstAttemptCorrect ? 'Practice' : 'Mastered'}
-                                    </span>
-                                  )}
-                                  {quiz.mode === 'learn' && answer?.totalAttempts && answer.totalAttempts > 1 && (
-                                    <span className="text-xs text-muted-foreground">
-                                      ({answer.totalAttempts} attempts)
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground truncate max-w-lg">{q.questionText.replace(/___/g, '...')}</p>
-                            </div>
-                        </div>
-                        {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+          return (
+            <motion.div
+              key={q.id}
+              variants={fadeUp}
+              className="group"
+            >
+              <Card className={`overflow-hidden transition-colors ${!isCorrect ? 'border-destructive/20' : ''}`}>
+                {/* Question Row */}
+                <button
+                  onClick={() => toggleExpand(q.id)}
+                  className="w-full p-3.5 sm:p-4 flex items-center gap-3 text-left hover:bg-accent/50 transition-colors cursor-pointer"
+                >
+                  {/* Status Icon */}
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                    isCorrect
+                      ? 'bg-chart-2/15 text-chart-2'
+                      : 'bg-destructive/15 text-destructive'
+                  }`}>
+                    {isCorrect
+                      ? <Check className="w-4 h-4" />
+                      : <X className="w-4 h-4" />
+                    }
+                  </div>
+
+                  {/* Question Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">Q{idx + 1}</span>
+                      {quiz.mode === 'learn' && answer?.hasRetries && (
+                        <Badge variant="secondary" className="text-[10px] py-0 px-1.5">
+                          {answer.firstAttemptCorrect ? 'Practice' : 'Mastered'}
+                        </Badge>
+                      )}
+                      {quiz.mode === 'learn' && answer?.totalAttempts && answer.totalAttempts > 1 && (
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
+                          {answer.totalAttempts} attempts
+                        </span>
+                      )}
                     </div>
-                    
-                    {isExpanded && (
-                        <div className="px-16 pb-6 pt-2 animate-in slide-in-from-top-2">
-                            <div className="space-y-3">
-                                <p className="text-lg text-foreground font-medium">{q.questionText}</p>
-                                
-                                <div className="grid md:grid-cols-2 gap-4 mt-4">
-                                    <div className={`p-3 rounded-lg border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                                        <p className="text-xs font-bold uppercase tracking-wide mb-1 opacity-70">Your Answer</p>
-                                        <p className="font-medium">{answer?.userAnswer || "Skipped"}</p>
-                                    </div>
-                                    <div className="p-3 rounded-lg border bg-slate-50 border-border">
-                                        <p className="text-xs font-bold uppercase tracking-wide mb-1 opacity-70">Correct Answer</p>
-                                        <p className="font-medium">{q.correctAnswer}</p>
-                                    </div>
-                                </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">
+                      {q.questionText.replace(/___/g, '...')}
+                    </p>
+                  </div>
 
-                                {answer?.score !== undefined &&
-                                 (q.type === 'short_answer' || q.type === 'fill_blank') && (
-                                  <div className="mt-3 p-3 bg-slate-50 border border-border rounded-lg">
-                                    <p className="text-sm text-muted-foreground">
-                                      (AI Confidence Score: <strong>{answer.score}/100</strong>)
-                                    </p>
-                                  </div>
-                                )}
+                  {/* Expand Chevron */}
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="shrink-0"
+                  >
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </motion.div>
+                </button>
 
-                                <div className="mt-4 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm leading-relaxed">
-                                    <span className="font-bold block mb-1">Explanation:</span>
-                                    {q.explanation}
-                                </div>
+                {/* Expanded Detail */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-4 sm:px-5 pb-5 pt-1 border-t border-border space-y-4">
+                        {/* Full Question */}
+                        <p className="text-sm text-foreground font-medium leading-relaxed pt-3">
+                          {q.questionText}
+                        </p>
 
-                                {/* Override Button - Show only when answer is incorrect */}
-                                {!isCorrect && (
-                                  <div className="mt-4">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleOverrideAnswer(q.id)}
-                                      disabled={isOverriding}
-                                      className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                                    >
-                                      <AlertCircle className="w-4 h-4 mr-2" />
-                                      {isOverriding ? "Overriding..." : "Override: Mark Answer as Correct"}
-                                    </Button>
-                                  </div>
-                                )}
-                            </div>
+                        {/* Answer Comparison */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className={`p-3 rounded-xl border text-sm ${
+                            isCorrect
+                              ? 'bg-chart-2/5 border-chart-2/20'
+                              : 'bg-destructive/5 border-destructive/20'
+                          }`}>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                              Your Answer
+                            </p>
+                            <p className="font-medium text-foreground leading-snug">
+                              {answer?.userAnswer || "Skipped"}
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-xl border border-border bg-muted/50 text-sm">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                              Correct Answer
+                            </p>
+                            <p className="font-medium text-foreground leading-snug">
+                              {q.correctAnswer}
+                            </p>
+                          </div>
                         </div>
-                    )}
-                </div>
-            );
+
+                        {/* AI Confidence Score */}
+                        {answer?.score !== undefined &&
+                         (q.type === 'short_answer' || q.type === 'fill_blank') && (
+                          <div className="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-xl">
+                            <div className="relative w-9 h-9 shrink-0">
+                              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                <circle cx="18" cy="18" r="14" fill="none" stroke="var(--color-border)" strokeWidth="3" />
+                                <circle
+                                  cx="18" cy="18" r="14" fill="none"
+                                  stroke={answer.score >= 70 ? 'var(--color-chart-2)' : answer.score >= 40 ? 'var(--color-chart-4)' : 'var(--color-destructive)'}
+                                  strokeWidth="3"
+                                  strokeDasharray={`${(answer.score / 100) * 87.96} 87.96`}
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold tabular-nums">
+                                {answer.score}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-foreground">AI Confidence</p>
+                              <p className="text-[11px] text-muted-foreground">{answer.score}/100 match score</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Explanation */}
+                        <div className="flex gap-3 p-3.5 bg-primary/5 border border-primary/10 rounded-xl">
+                          <div className="p-1.5 bg-primary/10 rounded-lg h-fit shrink-0 mt-0.5">
+                            <Lightbulb className="w-3.5 h-3.5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-foreground mb-1">Explanation</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {q.explanation}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Override Button */}
+                        {!isCorrect && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOverrideAnswer(q.id)}
+                            disabled={isOverriding}
+                            className="border-chart-4/40 text-chart-4 hover:bg-chart-4/10 hover:text-chart-4"
+                          >
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            {isOverriding ? "Overriding..." : "Mark as Correct"}
+                          </Button>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            </motion.div>
+          )
         })}
-      </div>
-    </div>
-  );
+      </motion.div>
+    </motion.div>
+  )
 }

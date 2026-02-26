@@ -129,7 +129,7 @@ export default async function QuizResultsPage({ params, searchParams }: ResultsP
   const scorePercentage = Math.round((attempt.correct_answers || 0) / attempt.total_questions * 100)
 
   return (
-    <div className="py-8">
+    <div className="py-4 sm:py-8">
       <ResultsSummary
         quiz={{
           id: id,

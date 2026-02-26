@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { GoogleGenAI } from "npm:@google/genai";
+import { GoogleGenAI, createPartFromUri } from "npm:@google/genai";
+import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { getFallbackModels, resolveModel, buildThinkingConfig } from "./lib/model-config.ts";
 import { PDF_EXTRACTION_PROMPT, buildPageClassificationPrompt, TOPIC_EXTRACTION_PROMPT, LLM_STRUCTURING_PROMPT } from "./lib/prompts.ts";
 import { classifyPageHeuristic, type ExtractedPage, type PageClassification } from "./lib/heuristic-classifier.ts";
@@ -420,6 +421,11 @@ Deno.serve(async (req: Request) => {
       error_stage: null,
     });
 
+    // Initialize Gemini early so we can use Files API
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
+    const genAI = new GoogleGenAI({ apiKey });
+
     // Download PDF from storage
     const { data: fileData, error: downloadError } = await supabase.storage
       .from("documents")
@@ -429,29 +435,59 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to download file: ${downloadError?.message || "No data"}`);
     }
 
-    const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    // Base64 encode in Deno
-    const base64 = btoa(
-      bytes.reduce((data, byte) => data + String.fromCharCode(byte), ""),
-    );
+    // Use Files API for large PDFs (>4MB) to avoid memory limits,
+    // inline base64 for small ones (faster, no upload round-trip)
+    const FILE_SIZE_THRESHOLD = 4 * 1024 * 1024; // 4MB
+    const fileSize = fileData.size;
+    let pdfPart: unknown;
+    let uploadedFileName: string | null = null;
 
-    // Initialize Gemini
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
-    const genAI = new GoogleGenAI({ apiKey });
+    if (fileSize > FILE_SIZE_THRESHOLD) {
+      // Upload to Gemini Files API — keeps the PDF out of Edge Function memory
+      const uploaded = await genAI.files.upload({
+        file: fileData,
+        config: { mimeType: "application/pdf" },
+      });
+
+      // Wait for processing
+      let fileStatus = await genAI.files.get({ name: uploaded.name! });
+      while (fileStatus.state === "PROCESSING") {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        fileStatus = await genAI.files.get({ name: uploaded.name! });
+      }
+      if (fileStatus.state === "FAILED") {
+        throw new Error("Gemini file processing failed");
+      }
+
+      uploadedFileName = uploaded.name!;
+      pdfPart = createPartFromUri(fileStatus.uri!, fileStatus.mimeType!);
+    } else {
+      // Small file — inline base64 is fine
+      const arrayBuffer = await fileData.arrayBuffer();
+      const base64 = encodeBase64(arrayBuffer);
+      pdfPart = { inlineData: { mimeType: "application/pdf", data: base64 } };
+    }
 
     // Extract pages via Gemini Vision
-    const { text: extractedRawText } = await callGemini(
-      genAI, supabase, "pdf_extract",
-      [
-        { role: "user", parts: [
-          { inlineData: { mimeType: "application/pdf", data: base64 } },
-          { text: PDF_EXTRACTION_PROMPT },
-        ] },
-      ],
-      { documentId, userId, effort: "medium" },
-    );
+    let extractedRawText: string;
+    try {
+      const { text } = await callGemini(
+        genAI, supabase, "pdf_extract",
+        [
+          { role: "user", parts: [
+            pdfPart,
+            { text: PDF_EXTRACTION_PROMPT },
+          ] },
+        ],
+        { documentId, userId, effort: "medium" },
+      );
+      extractedRawText = text;
+    } finally {
+      // Clean up uploaded file from Gemini
+      if (uploadedFileName) {
+        genAI.files.delete({ name: uploadedFileName }).catch(() => {});
+      }
+    }
 
     if (!extractedRawText?.trim()) {
       throw new Error("No text extracted from PDF");
